@@ -20,7 +20,6 @@ type Model struct {
 	width         int
 	height        int
 	SelectedSpec  *core.SessionSpec
-	ignoreToolHit bool
 }
 
 func New(roots []string, fs ports.Filesystem) Model {
@@ -112,7 +111,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.worktreeInput.Blur()
 					m.toolInput.SetValue("")
 					m.toolInput.Focus()
-					m.ignoreToolHit = true
 				}
 				cmd := m.runEffects(effects)
 				return m, cmd
@@ -131,12 +129,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.core.Mode == core.ModeTool {
 			switch key {
 			case "up", "down", "ctrl+k", "ctrl+j", "enter", "esc", "ctrl+c":
-				if m.ignoreToolHit {
-					m.ignoreToolHit = false
-					if key == "enter" {
-						return m, nil
-					}
-				}
 				prevMode := m.core.Mode
 				coreModel, effects := core.Update(m.core, core.MsgKeyPress{Key: key})
 				m.core = coreModel
@@ -147,7 +139,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.toolInput.SetValue("")
 					m.toolInput.Blur()
 					m.worktreeInput.Focus()
-					m.ignoreToolHit = false
 				}
 				cmd := m.runEffects(effects)
 				return m, cmd
