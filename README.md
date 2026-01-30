@@ -15,6 +15,7 @@ A fast terminal-based project picker that launches tmux sessions for agent tools
 - tmux
 - git
 - `opencode` and/or `amp` on your PATH
+- Git author identity configured (`user.name` and `user.email`) for `--create-project`/`ctrl+n`
 
 ## Installation
 
@@ -81,6 +82,7 @@ my-project/
 ```
 
 The project directory itself is not a git repo; the `main` worktree is the primary repo.
+The `main` worktree is created with an empty commit during project creation.
 
 ### Keybinding Examples
 
