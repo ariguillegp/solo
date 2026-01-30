@@ -9,16 +9,6 @@ import (
 	"github.com/ariguillegp/solo/internal/core"
 )
 
-func hasExactMatch(worktrees []core.Worktree, query string) bool {
-	query = strings.ToLower(query)
-	for _, wt := range worktrees {
-		if strings.ToLower(wt.Name) == query || strings.ToLower(wt.Branch) == query {
-			return true
-		}
-	}
-	return false
-}
-
 func (m Model) View() string {
 	var content string
 
@@ -26,7 +16,7 @@ func (m Model) View() string {
 	case core.ModeLoading:
 		content = m.spinner.View() + " Scanning..."
 
-	case core.ModeBrowsing, core.ModeCreateDir:
+	case core.ModeBrowsing:
 		prompt := promptStyle.Render("Enter the project directory")
 		input := prompt + "\n" + m.input.View()
 
@@ -60,6 +50,15 @@ func (m Model) View() string {
 			content = input
 		}
 
+		if m.core.ProjectWarning != "" {
+			content += "\n" + warningStyle.Render(m.core.ProjectWarning)
+		}
+
+	case core.ModeTool:
+		prompt := promptStyle.Render("Select tool")
+		options := renderToolOptions(m.core.Tools, m.core.ToolIdx)
+		content = prompt + "\n" + options
+
 	case core.ModeError:
 		content = errorStyle.Render(fmt.Sprintf("Error: %v", m.core.Err))
 	}
@@ -75,4 +74,21 @@ func (m Model) View() string {
 		lipgloss.Center, lipgloss.Center,
 		box,
 	)
+}
+
+func renderToolOptions(tools []string, selected int) string {
+	if len(tools) == 0 {
+		return ""
+	}
+	lines := make([]string, 0, len(tools))
+	for i, tool := range tools {
+		label := "  " + tool
+		if i == selected {
+			label = "> " + tool
+			lines = append(lines, selectedStyle.Render(label))
+			continue
+		}
+		lines = append(lines, suggestionStyle.Render(label))
+	}
+	return strings.Join(lines, "\n")
 }

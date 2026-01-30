@@ -10,11 +10,11 @@ type EffScanDirs struct {
 
 func (EffScanDirs) isEffect() {}
 
-type EffMkdirAll struct {
+type EffCreateProject struct {
 	Path string
 }
 
-func (EffMkdirAll) isEffect() {}
+func (EffCreateProject) isEffect() {}
 
 type EffOpenSession struct {
 	Spec SessionSpec

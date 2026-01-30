@@ -7,6 +7,7 @@ var (
 	red           = lipgloss.Color("#e06c75")
 	lightGray     = lipgloss.Color("#6a6a6a")
 	white         = lipgloss.Color("#ffffff")
+	warningOrange = lipgloss.Color("#e0b36c")
 
 	suggestionStyle = lipgloss.NewStyle().
 			Foreground(lightGray)
@@ -23,6 +24,9 @@ var (
 
 	errorStyle = lipgloss.NewStyle().
 			Foreground(red)
+
+	warningStyle = lipgloss.NewStyle().
+			Foreground(warningOrange)
 
 	boxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

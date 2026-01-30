@@ -23,17 +23,18 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 	case MsgKeyPress:
 		return handleKey(m, msg.Key)
 
-	case MsgCreateDirCompleted:
+	case MsgProjectCreated:
 		if msg.Err != nil {
 			m.Mode = ModeError
 			m.Err = msg.Err
 			return m, nil
 		}
-		m.SelectedProject = msg.Path
+		m.SelectedProject = msg.ProjectPath
 		m.Mode = ModeWorktree
 		m.WorktreeQuery = ""
 		m.WorktreeIdx = 0
-		return m, []Effect{EffLoadWorktrees{ProjectPath: msg.Path}}
+		m.ProjectWarning = ""
+		return m, []Effect{EffLoadWorktrees{ProjectPath: msg.ProjectPath}}
 
 	case MsgWorktreesLoaded:
 		if msg.Err != nil {
@@ -41,13 +42,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 			m.Err = msg.Err
 			return m, nil
 		}
-		if len(msg.Worktrees) == 0 {
-			spec := SessionSpec{
-				Backend: m.Backend,
-				DirPath: m.SelectedProject,
-			}
-			return m, []Effect{EffOpenSession{Spec: spec}}
-		}
+		m.ProjectWarning = msg.Warning
 		m.Worktrees = msg.Worktrees
 		m.FilteredWT = FilterWorktrees(m.Worktrees, m.WorktreeQuery)
 		m.WorktreeIdx = 0
@@ -65,11 +60,10 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 			m.Err = msg.Err
 			return m, nil
 		}
-		spec := SessionSpec{
-			Backend: m.Backend,
-			DirPath: msg.Path,
-		}
-		return m, []Effect{EffOpenSession{Spec: spec}}
+		m.SelectedWorktreePath = msg.Path
+		m.Mode = ModeTool
+		m.ToolIdx = 0
+		return m, nil
 	}
 
 	return m, nil
@@ -79,10 +73,10 @@ func handleKey(m Model, key string) (Model, []Effect) {
 	switch m.Mode {
 	case ModeBrowsing:
 		return handleBrowsingKey(m, key)
-	case ModeCreateDir:
-		return handleCreateDirKey(m, key)
 	case ModeWorktree:
 		return handleWorktreeKey(m, key)
+	case ModeTool:
+		return handleToolKey(m, key)
 	}
 	return m, nil
 }
@@ -107,27 +101,15 @@ func handleBrowsingKey(m Model, key string) (Model, []Effect) {
 		}
 		if m.Query != "" && len(m.RootPaths) > 0 {
 			path := m.RootPaths[0] + "/" + m.Query
-			return m, []Effect{EffMkdirAll{Path: path}}
+			return m, []Effect{EffCreateProject{Path: path}}
 		}
 	case "ctrl+n":
 		if m.Query != "" && len(m.RootPaths) > 0 {
 			path := m.RootPaths[0] + "/" + m.Query
-			return m, []Effect{EffMkdirAll{Path: path}}
+			return m, []Effect{EffCreateProject{Path: path}}
 		}
 	case "esc", "ctrl+c":
 		return m, []Effect{EffQuit{}}
-	}
-	return m, nil
-}
-
-func handleCreateDirKey(m Model, key string) (Model, []Effect) {
-	switch key {
-	case "enter":
-		if m.Query != "" {
-			return m, []Effect{EffMkdirAll{Path: m.Query}}
-		}
-	case "esc":
-		m.Mode = ModeBrowsing
 	}
 	return m, nil
 }
@@ -144,17 +126,10 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect) {
 		}
 	case "enter":
 		if wt, ok := m.SelectedWorktree(); ok {
-			if wt.IsNew {
-				return m, []Effect{EffCreateWorktree{
-					ProjectPath: m.SelectedProject,
-					BranchName:  m.WorktreeQuery,
-				}}
-			}
-			spec := SessionSpec{
-				Backend: m.Backend,
-				DirPath: wt.Path,
-			}
-			return m, []Effect{EffOpenSession{Spec: spec}}
+			m.SelectedWorktreePath = wt.Path
+			m.Mode = ModeTool
+			m.ToolIdx = 0
+			return m, nil
 		}
 		if m.WorktreeQuery != "" {
 			return m, []Effect{EffCreateWorktree{
@@ -175,6 +150,34 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect) {
 		m.Worktrees = nil
 		m.FilteredWT = nil
 		m.WorktreeIdx = 0
+		m.ProjectWarning = ""
+		m.SelectedWorktreePath = ""
+	case "ctrl+c":
+		return m, []Effect{EffQuit{}}
+	}
+	return m, nil
+}
+
+func handleToolKey(m Model, key string) (Model, []Effect) {
+	switch key {
+	case "up", "ctrl+k":
+		if m.ToolIdx > 0 {
+			m.ToolIdx--
+		}
+	case "down", "ctrl+j":
+		if m.ToolIdx < len(m.Tools)-1 {
+			m.ToolIdx++
+		}
+	case "enter":
+		if tool, ok := m.SelectedTool(); ok && m.SelectedWorktreePath != "" {
+			spec := SessionSpec{
+				DirPath: m.SelectedWorktreePath,
+				Tool:    tool,
+			}
+			return m, []Effect{EffOpenSession{Spec: spec}}
+		}
+	case "esc":
+		m.Mode = ModeWorktree
 	case "ctrl+c":
 		return m, []Effect{EffQuit{}}
 	}

@@ -11,12 +11,12 @@ type MsgScanCompleted struct {
 
 func (MsgScanCompleted) isMsg() {}
 
-type MsgCreateDirCompleted struct {
-	Path string
-	Err  error
+type MsgProjectCreated struct {
+	ProjectPath string
+	Err         error
 }
 
-func (MsgCreateDirCompleted) isMsg() {}
+func (MsgProjectCreated) isMsg() {}
 
 type MsgKeyPress struct {
 	Key string
@@ -32,6 +32,7 @@ func (MsgQueryChanged) isMsg() {}
 
 type MsgWorktreesLoaded struct {
 	Worktrees []Worktree
+	Warning   string
 	Err       error
 }
 
