@@ -26,14 +26,18 @@ type Model struct {
 	WorktreeIdx          int
 	WorktreeQuery        string
 	Tools                []string
+	FilteredTools        []string
+	ToolQuery            string
 	ToolIdx              int
 }
 
 func NewModel(roots []string) Model {
+	tools := SupportedTools()
 	return Model{
-		Mode:      ModeLoading,
-		RootPaths: roots,
-		Tools:     SupportedTools(),
+		Mode:          ModeLoading,
+		RootPaths:     roots,
+		Tools:         tools,
+		FilteredTools: tools,
 	}
 }
 
@@ -52,8 +56,8 @@ func (m Model) SelectedWorktree() (Worktree, bool) {
 }
 
 func (m Model) SelectedTool() (string, bool) {
-	if len(m.Tools) == 0 || m.ToolIdx >= len(m.Tools) {
+	if len(m.FilteredTools) == 0 || m.ToolIdx >= len(m.FilteredTools) {
 		return "", false
 	}
-	return m.Tools[m.ToolIdx], true
+	return m.FilteredTools[m.ToolIdx], true
 }

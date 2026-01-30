@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -56,8 +55,18 @@ func (m Model) View() string {
 
 	case core.ModeTool:
 		prompt := promptStyle.Render("Select tool")
-		options := renderToolOptions(m.core.Tools, m.core.ToolIdx)
-		content = prompt + "\n" + options
+		input := prompt + "\n" + m.toolInput.View()
+
+		if tool, ok := m.core.SelectedTool(); ok {
+			suggestion := suggestionStyle.Render(tool)
+			nav := ""
+			if len(m.core.FilteredTools) > 1 {
+				nav = navStyle.Render(fmt.Sprintf("  [%d/%d]", m.core.ToolIdx+1, len(m.core.FilteredTools)))
+			}
+			content = input + "\n" + suggestion + nav
+		} else {
+			content = input
+		}
 
 	case core.ModeError:
 		content = errorStyle.Render(fmt.Sprintf("Error: %v", m.core.Err))
@@ -74,21 +83,4 @@ func (m Model) View() string {
 		lipgloss.Center, lipgloss.Center,
 		box,
 	)
-}
-
-func renderToolOptions(tools []string, selected int) string {
-	if len(tools) == 0 {
-		return ""
-	}
-	lines := make([]string, 0, len(tools))
-	for i, tool := range tools {
-		label := "  " + tool
-		if i == selected {
-			label = "> " + tool
-			lines = append(lines, selectedStyle.Render(label))
-			continue
-		}
-		lines = append(lines, suggestionStyle.Render(label))
-	}
-	return strings.Join(lines, "\n")
 }

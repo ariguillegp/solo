@@ -51,3 +51,21 @@ func FilterWorktrees(wts []Worktree, query string) []Worktree {
 
 	return result
 }
+
+func FilterTools(tools []string, query string) []string {
+	if query == "" {
+		return tools
+	}
+
+	query = strings.ToLower(query)
+	var result []string
+
+	for _, tool := range tools {
+		name := strings.ToLower(tool)
+		if fuzzyMatch(name, query) {
+			result = append(result, tool)
+		}
+	}
+
+	return result
+}

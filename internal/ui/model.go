@@ -13,6 +13,7 @@ type Model struct {
 	core          core.Model
 	input         textinput.Model
 	worktreeInput textinput.Model
+	toolInput     textinput.Model
 	spinner       spinner.Model
 	fs            ports.Filesystem
 	maxDepth      int
@@ -27,6 +28,7 @@ func New(roots []string, fs ports.Filesystem) Model {
 	ti.Focus()
 
 	wti := textinput.New()
+	tti := textinput.New()
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -35,6 +37,7 @@ func New(roots []string, fs ports.Filesystem) Model {
 		core:          core.NewModel(roots),
 		input:         ti,
 		worktreeInput: wti,
+		toolInput:     tti,
 		spinner:       sp,
 		fs:            fs,
 		maxDepth:      2,
@@ -107,6 +110,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if prevMode == core.ModeWorktree && m.core.Mode == core.ModeTool {
 					m.worktreeInput.Blur()
+					m.toolInput.SetValue("")
+					m.toolInput.Focus()
 					m.ignoreToolHit = true
 				}
 				cmd := m.runEffects(effects)
@@ -139,11 +144,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.SelectedSpec = spec
 				}
 				if prevMode == core.ModeTool && m.core.Mode == core.ModeWorktree {
+					m.toolInput.SetValue("")
+					m.toolInput.Blur()
 					m.worktreeInput.Focus()
 					m.ignoreToolHit = false
 				}
 				cmd := m.runEffects(effects)
 				return m, cmd
+			default:
+				var cmd tea.Cmd
+				m.toolInput, cmd = m.toolInput.Update(msg)
+				cmds = append(cmds, cmd)
+
+				coreModel, effects := core.Update(m.core, core.MsgToolQueryChanged{Query: m.toolInput.Value()})
+				m.core = coreModel
+				cmds = append(cmds, m.runEffects(effects))
+				return m, tea.Batch(cmds...)
 			}
 		}
 
@@ -194,6 +210,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.core.Mode == core.ModeTool {
 			m.worktreeInput.Blur()
+			m.toolInput.SetValue("")
+			m.toolInput.Focus()
 		}
 		cmd := m.runEffects(effects)
 		return m, cmd

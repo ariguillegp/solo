@@ -50,3 +50,9 @@ type MsgWorktreeQueryChanged struct {
 }
 
 func (MsgWorktreeQueryChanged) isMsg() {}
+
+type MsgToolQueryChanged struct {
+	Query string
+}
+
+func (MsgToolQueryChanged) isMsg() {}

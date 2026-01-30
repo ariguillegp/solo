@@ -62,6 +62,14 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		}
 		m.SelectedWorktreePath = msg.Path
 		m.Mode = ModeTool
+		m.ToolQuery = ""
+		m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
+		m.ToolIdx = 0
+		return m, nil
+
+	case MsgToolQueryChanged:
+		m.ToolQuery = msg.Query
+		m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
 		m.ToolIdx = 0
 		return m, nil
 	}
@@ -128,6 +136,8 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect) {
 		if wt, ok := m.SelectedWorktree(); ok {
 			m.SelectedWorktreePath = wt.Path
 			m.Mode = ModeTool
+			m.ToolQuery = ""
+			m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
 			m.ToolIdx = 0
 			return m, nil
 		}
@@ -165,7 +175,7 @@ func handleToolKey(m Model, key string) (Model, []Effect) {
 			m.ToolIdx--
 		}
 	case "down", "ctrl+j":
-		if m.ToolIdx < len(m.Tools)-1 {
+		if m.ToolIdx < len(m.FilteredTools)-1 {
 			m.ToolIdx++
 		}
 	case "enter":
@@ -178,6 +188,8 @@ func handleToolKey(m Model, key string) (Model, []Effect) {
 		}
 	case "esc":
 		m.Mode = ModeWorktree
+		m.ToolQuery = ""
+		m.ToolIdx = 0
 	case "ctrl+c":
 		return m, []Effect{EffQuit{}}
 	}
