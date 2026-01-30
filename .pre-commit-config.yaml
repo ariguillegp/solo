@@ -1,0 +1,18 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: golangci-lint
+        name: golangci-lint (system)
+        entry: golangci-lint run --config=.golangci.yml ./...
+        language: system
+        types: [go]
+        pass_filenames: false

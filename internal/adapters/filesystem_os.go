@@ -81,7 +81,9 @@ func scanDir(path string, depth, maxDepth int, seen map[string]bool, dirs *[]cor
 			continue
 		}
 
-		scanDir(fullPath, depth+1, maxDepth, seen, dirs)
+		if err := scanDir(fullPath, depth+1, maxDepth, seen, dirs); err != nil {
+			return err
+		}
 	}
 
 	return nil
