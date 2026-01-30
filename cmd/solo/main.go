@@ -124,10 +124,17 @@ func resolveSessionSpec(fs ports.Filesystem, roots []string, project, worktree, 
 }
 
 func resolveProjectPath(fs ports.Filesystem, roots []string, project string, createProject bool) (string, error) {
-	if filepath.IsAbs(project) || strings.HasPrefix(project, "~/") {
+	if looksLikePath(project) {
 		path := expandPath(project)
 		if path == "" {
 			return "", fmt.Errorf("invalid project path")
+		}
+		if !filepath.IsAbs(path) {
+			absPath, err := filepath.Abs(path)
+			if err != nil {
+				return "", fmt.Errorf("cannot resolve path: %w", err)
+			}
+			path = absPath
 		}
 		if !exists(path) {
 			if createProject {
@@ -165,8 +172,15 @@ func resolveProjectPath(fs ports.Filesystem, roots []string, project string, cre
 }
 
 func resolveWorktreePath(fs ports.Filesystem, projectPath, worktree string) (string, error) {
-	if filepath.IsAbs(worktree) || strings.HasPrefix(worktree, "~/") {
+	if looksLikePath(worktree) {
 		path := expandPath(worktree)
+		if !filepath.IsAbs(path) {
+			absPath, err := filepath.Abs(path)
+			if err != nil {
+				return "", fmt.Errorf("cannot resolve path: %w", err)
+			}
+			path = absPath
+		}
 		if exists(path) {
 			return path, nil
 		}
@@ -195,6 +209,14 @@ func expandPath(path string) string {
 		return filepath.Join(home, path[2:])
 	}
 	return path
+}
+
+func looksLikePath(s string) bool {
+	return filepath.IsAbs(s) ||
+		strings.HasPrefix(s, "~/") ||
+		strings.HasPrefix(s, "./") ||
+		strings.HasPrefix(s, "../") ||
+		strings.Contains(s, string(filepath.Separator))
 }
 
 func exists(path string) bool {
