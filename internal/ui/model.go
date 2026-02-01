@@ -10,28 +10,38 @@ import (
 )
 
 type Model struct {
-	core          core.Model
-	input         textinput.Model
-	worktreeInput textinput.Model
-	toolInput     textinput.Model
-	spinner       spinner.Model
-	fs            ports.Filesystem
-	maxDepth      int
-	width         int
-	height        int
-	SelectedSpec  *core.SessionSpec
+	core            core.Model
+	input           textinput.Model
+	worktreeInput   textinput.Model
+	toolInput       textinput.Model
+	spinner         spinner.Model
+	fs              ports.Filesystem
+	maxDepth        int
+	width           int
+	height          int
+	SelectedSpec    *core.SessionSpec
+	themeIdx        int
+	themes          []Theme
+	styles          Styles
+	showThemePicker bool
+	prevThemeIdx    int
+	prevStyles      Styles
 }
 
 func New(roots []string, fs ports.Filesystem) Model {
 	ti := textinput.New()
+	ti.Prompt = ""
 	ti.Focus()
 
 	wti := textinput.New()
+	wti.Prompt = ""
 	tti := textinput.New()
+	tti.Prompt = ""
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
+	allThemes := Themes()
 	return Model{
 		core:          core.NewModel(roots),
 		input:         ti,
@@ -40,6 +50,9 @@ func New(roots []string, fs ports.Filesystem) Model {
 		spinner:       sp,
 		fs:            fs,
 		maxDepth:      2,
+		themes:        allThemes,
+		themeIdx:      0,
+		styles:        NewStyles(allThemes[0]),
 	}
 }
 
@@ -66,6 +79,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		key := msg.String()
+
+		if m.showThemePicker {
+			switch key {
+			case "up", "ctrl+k":
+				if m.themeIdx > 0 {
+					m.themeIdx--
+					m.styles = NewStyles(m.themes[m.themeIdx])
+				}
+			case "down", "ctrl+j":
+				if m.themeIdx < len(m.themes)-1 {
+					m.themeIdx++
+					m.styles = NewStyles(m.themes[m.themeIdx])
+				}
+			case "esc":
+				m.themeIdx = m.prevThemeIdx
+				m.styles = m.prevStyles
+				m.showThemePicker = false
+			case "enter", "ctrl+t":
+				m.showThemePicker = false
+			case "ctrl+c":
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if key == "ctrl+t" && m.core.Mode != core.ModeLoading {
+			m.prevThemeIdx = m.themeIdx
+			m.prevStyles = m.styles
+			m.showThemePicker = true
+			return m, nil
+		}
+
 		prevMode := m.core.Mode
 
 		coreModel, effects, handled := core.UpdateKey(m.core, key)

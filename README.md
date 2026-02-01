@@ -9,6 +9,7 @@ A fast terminal-based project picker that launches tmux sessions for agent tools
 - Create new projects with a default `main` worktree and empty commit
 - Launch tmux sessions running `opencode` or `amp`
 - Keyboard-driven navigation
+- Theme picker for customizing the UI
 
 ## Prerequisites
 
@@ -70,6 +71,11 @@ This affects both the UI tool picker and `--tool` validation.
 
 To create the tmux session without attaching (useful for scripts), add `--detach`.
 
+### Theme Picker
+
+Press `ctrl+t` to open the theme picker and choose from the available themes. The
+selected theme updates UI colors across the app.
+
 ### Project Layout
 
 Solo expects a project container that holds one worktree per directory:
@@ -118,6 +124,9 @@ This launches solo in a temporary tmux session to keep your current session clea
 3. Choose an existing worktree or type a branch name to create a new one
 4. Select a tool (`opencode` or `amp`) to start the session
 
+The fuzzy suggestion list shows up to five items at once and displays scroll
+indicators when more suggestions are available.
+
 ### Keybindings
 
 #### Project Selection
@@ -128,6 +137,7 @@ This launches solo in a temporary tmux session to keep your current session clea
 | `↓` / `ctrl+j` | Next suggestion |
 | `enter` | Select project (go to worktree selection) |
 | `ctrl+n` | Create new project |
+| `ctrl+t` | Open theme picker |
 | `esc` / `ctrl+c` | Quit |
 
 #### Worktree Selection
@@ -139,6 +149,7 @@ This launches solo in a temporary tmux session to keep your current session clea
 | `enter` | Select worktree / create new if typing |
 | `ctrl+n` | Create new worktree with typed branch name |
 | `ctrl+d` | Delete selected worktree (with confirmation) |
+| `ctrl+t` | Open theme picker |
 | `esc` | Go back to project selection |
 | `ctrl+c` | Quit |
 
@@ -149,6 +160,7 @@ This launches solo in a temporary tmux session to keep your current session clea
 | `↑` / `ctrl+k` | Previous tool |
 | `↓` / `ctrl+j` | Next tool |
 | `enter` | Start session |
+| `ctrl+t` | Open theme picker |
 | `esc` | Back to worktree selection |
 | `ctrl+c` | Quit |
 
