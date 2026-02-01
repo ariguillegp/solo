@@ -73,7 +73,11 @@ func (m Model) CreateProjectPath() (string, bool) {
 	if m.Query == "" || len(m.RootPaths) == 0 {
 		return "", false
 	}
-	path := filepath.Join(m.RootPaths[0], m.Query)
+	query := strings.TrimSpace(m.Query)
+	if query == "" || filepath.IsAbs(query) {
+		return "", false
+	}
+	path := filepath.Join(m.RootPaths[0], query)
 	for _, dir := range m.Dirs {
 		if dir.Path == path {
 			return "", false
