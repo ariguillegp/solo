@@ -9,6 +9,14 @@ import (
 	"github.com/ariguillegp/solo/internal/core"
 )
 
+func renderHelpLine(items []struct{ key, desc string }) string {
+	var parts []string
+	for _, item := range items {
+		parts = append(parts, keyStyle.Render(item.key)+" "+helpStyle.Render(item.desc))
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Center, strings.Join(parts, "  "))
+}
+
 const maxSuggestions = 5
 
 func renderSuggestionList(lines []string, selectedIdx int) string {
@@ -32,8 +40,14 @@ func renderSuggestionList(lines []string, selectedIdx int) string {
 	}
 
 	var out strings.Builder
+
+	if start > 0 {
+		out.WriteString(scrollIndicatorStyle.Render("  ▲ more above"))
+		out.WriteString("\n")
+	}
+
 	for i := start; i < end; i++ {
-		if i > start {
+		if i > start || start > 0 {
 			out.WriteString("\n")
 		}
 
@@ -41,11 +55,19 @@ func renderSuggestionList(lines []string, selectedIdx int) string {
 		if i == selectedIdx {
 			prefix = "> "
 		}
-		row := suggestionStyle.Render(prefix + lines[i])
-		if i == selectedIdx && len(lines) > 1 {
-			row += navStyle.Render(fmt.Sprintf("  [%d/%d]", selectedIdx+1, len(lines)))
+
+		var row string
+		if i == selectedIdx {
+			row = selectedSuggestionStyle.Render(prefix + lines[i])
+		} else {
+			row = suggestionStyle.Render(prefix + lines[i])
 		}
 		out.WriteString(row)
+	}
+
+	if end < len(lines) {
+		out.WriteString("\n")
+		out.WriteString(scrollIndicatorStyle.Render("  ▼ more below"))
 	}
 
 	return out.String()
@@ -54,13 +76,15 @@ func renderSuggestionList(lines []string, selectedIdx int) string {
 func (m Model) View() string {
 	var content string
 	var helpLine string
+	var header string
 
 	switch m.core.Mode {
 	case core.ModeLoading:
 		content = m.spinner.View() + " Scanning..."
-		helpLine = "esc: quit"
+		helpLine = renderHelpLine([]struct{ key, desc string }{{"esc", "quit"}})
 
 	case core.ModeBrowsing:
+		header = titleStyle.Render("Step 1: Select Project")
 		prompt := promptStyle.Render("Enter the project directory:")
 		input := prompt + " " + m.input.View()
 
@@ -75,9 +99,12 @@ func (m Model) View() string {
 		} else {
 			content = input
 		}
-		helpLine = "up/down: navigate  enter: select  ctrl+n: create  esc: quit"
+		helpLine = renderHelpLine([]struct{ key, desc string }{
+			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+n", "create"}, {"esc", "quit"},
+		})
 
 	case core.ModeWorktree:
+		header = titleStyle.Render("Step 2: Select Worktree")
 		prompt := promptStyle.Render("Select worktree or create new branch:")
 		input := prompt + " " + m.worktreeInput.View()
 
@@ -96,14 +123,21 @@ func (m Model) View() string {
 		if m.core.ProjectWarning != "" {
 			content += "\n" + warningStyle.Render(m.core.ProjectWarning)
 		}
-		helpLine = "up/down: navigate  enter: select  ctrl+n: create  ctrl+d: delete  esc: back"
+		helpLine = renderHelpLine([]struct{ key, desc string }{
+			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+n", "create"}, {"ctrl+d", "delete"}, {"esc", "back"},
+		})
 
 	case core.ModeWorktreeDeleteConfirm:
-		prompt := promptStyle.Render("Delete worktree?")
-		content = prompt + "\n" + suggestionStyle.Render(m.core.WorktreeDeletePath) + "\n" + suggestionStyle.Render("(enter to confirm, esc to cancel)")
-		helpLine = "enter: confirm  esc: cancel"
+		header = destructiveTitleStyle.Render("⚠ Delete Worktree")
+		prompt := destructiveTextStyle.Render("This will delete the following worktree:")
+		path := destructiveTextStyle.Render("  " + m.core.WorktreeDeletePath)
+		warning := destructiveTextStyle.Render("This action cannot be undone.")
+		actions := keyStyle.Render("enter") + " " + destructiveActionStyle.Render("delete") + "  " + keyStyle.Render("esc") + " " + helpStyle.Render("cancel")
+		content = prompt + "\n\n" + path + "\n\n" + warning + "\n\n" + actions
+		helpLine = ""
 
 	case core.ModeTool:
+		header = titleStyle.Render("Step 3: Select Tool")
 		prompt := promptStyle.Render("Select tool:")
 		input := prompt + " " + m.toolInput.View()
 
@@ -112,17 +146,24 @@ func (m Model) View() string {
 		} else {
 			content = input
 		}
-		helpLine = "up/down: navigate  enter: open  esc: back"
+		helpLine = renderHelpLine([]struct{ key, desc string }{
+			{"↑/↓", "navigate"}, {"enter", "open"}, {"esc", "back"},
+		})
 
 	case core.ModeError:
 		content = errorStyle.Render(fmt.Sprintf("Error: %v", m.core.Err))
-		helpLine = "esc: quit"
+		helpLine = renderHelpLine([]struct{ key, desc string }{{"esc", "quit"}})
+	}
+
+	if header != "" {
+		content = header + "\n\n" + content
 	}
 
 	if helpLine != "" {
-		content += "\n\n" + helpStyle.Render(helpLine)
+		content += "\n\n" + helpLine
 	}
 
+	boxStyle := boxStyleWithWidth(m.width)
 	box := boxStyle.Render(content)
 
 	if m.height <= 0 || m.width <= 0 {
