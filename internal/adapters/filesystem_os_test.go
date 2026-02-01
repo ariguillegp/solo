@@ -132,6 +132,34 @@ func TestListWorktreesWarnsWhenMultiplePrimaryRepos(t *testing.T) {
 	}
 }
 
+func TestDeleteWorktreeRemovesPath(t *testing.T) {
+	setGitIdentity(t)
+
+	projectPath := t.TempDir()
+	primaryPath := filepath.Join(projectPath, "main")
+	if err := os.MkdirAll(primaryPath, 0755); err != nil {
+		t.Fatalf("failed to create primary path: %v", err)
+	}
+
+	initRepo(t, primaryPath)
+	writeFile(t, filepath.Join(primaryPath, "README.md"), []byte("init\n"))
+	runGit(t, primaryPath, "add", ".")
+	runGit(t, primaryPath, "commit", "-m", "init")
+
+	fs := &OSFilesystem{}
+	worktreePath, err := fs.CreateWorktree(projectPath, "feature/delete")
+	if err != nil {
+		t.Fatalf("unexpected error creating worktree: %v", err)
+	}
+
+	if err := fs.DeleteWorktree(projectPath, worktreePath); err != nil {
+		t.Fatalf("unexpected error deleting worktree: %v", err)
+	}
+	if _, err := os.Stat(worktreePath); !os.IsNotExist(err) {
+		t.Fatalf("expected worktree path to be removed")
+	}
+}
+
 func TestCreateProjectCreatesPrimaryRepo(t *testing.T) {
 	setGitIdentity(t)
 

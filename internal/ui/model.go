@@ -88,9 +88,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toolInput.SetValue("")
 			m.toolInput.Focus()
 		}
+		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeWorktreeDeleteConfirm {
+			m.worktreeInput.Blur()
+		}
 		if prevMode == core.ModeTool && m.core.Mode == core.ModeWorktree {
 			m.toolInput.SetValue("")
 			m.toolInput.Blur()
+			m.worktreeInput.Focus()
+		}
+		if prevMode == core.ModeWorktreeDeleteConfirm && m.core.Mode == core.ModeWorktree {
 			m.worktreeInput.Focus()
 		}
 
@@ -176,6 +182,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmd := m.runEffects(effects)
 		return m, cmd
+
+	case worktreeDeletedMsg:
+		coreModel, effects := core.Update(m.core, core.MsgWorktreeDeleted{
+			Path: msg.path,
+			Err:  msg.err,
+		})
+		m.core = coreModel
+		if spec := extractSessionSpec(effects); spec != nil {
+			m.SelectedSpec = spec
+		}
+		if m.core.Mode == core.ModeWorktree {
+			m.worktreeInput.Focus()
+		}
+		cmd := m.runEffects(effects)
+		return m, cmd
 	}
 
 	return m, nil
@@ -202,6 +223,11 @@ type worktreeCreatedMsg struct {
 	err  error
 }
 
+type worktreeDeletedMsg struct {
+	path string
+	err  error
+}
+
 func (m Model) runEffects(effects []core.Effect) tea.Cmd {
 	var cmds []tea.Cmd
 
@@ -215,6 +241,8 @@ func (m Model) runEffects(effects []core.Effect) tea.Cmd {
 			cmds = append(cmds, m.loadWorktreesCmd(e.ProjectPath))
 		case core.EffCreateWorktree:
 			cmds = append(cmds, m.createWorktreeCmd(e.ProjectPath, e.BranchName))
+		case core.EffDeleteWorktree:
+			cmds = append(cmds, m.deleteWorktreeCmd(e.ProjectPath, e.WorktreePath))
 		case core.EffOpenSession:
 			cmds = append(cmds, tea.Quit)
 		case core.EffQuit:
@@ -263,5 +291,12 @@ func (m Model) createWorktreeCmd(projectPath, branchName string) tea.Cmd {
 	return func() tea.Msg {
 		path, err := m.fs.CreateWorktree(projectPath, branchName)
 		return worktreeCreatedMsg{path: path, err: err}
+	}
+}
+
+func (m Model) deleteWorktreeCmd(projectPath, worktreePath string) tea.Cmd {
+	return func() tea.Msg {
+		err := m.fs.DeleteWorktree(projectPath, worktreePath)
+		return worktreeDeletedMsg{path: worktreePath, err: err}
 	}
 }

@@ -38,3 +38,10 @@ type EffCreateWorktree struct {
 }
 
 func (EffCreateWorktree) isEffect() {}
+
+type EffDeleteWorktree struct {
+	ProjectPath  string
+	WorktreePath string
+}
+
+func (EffDeleteWorktree) isEffect() {}

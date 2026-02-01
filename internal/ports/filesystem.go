@@ -7,4 +7,6 @@ type Filesystem interface {
 	CreateProject(path string) (string, error)
 	ListWorktrees(projectPath string) (core.WorktreeListing, error)
 	CreateWorktree(projectPath, branchName string) (string, error)
+	DeleteWorktree(projectPath, worktreePath string) error
+	PruneWorktrees(projectPath string) error
 }

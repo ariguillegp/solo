@@ -164,6 +164,10 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 		return core.WorktreeListing{Warning: warning}, nil
 	}
 
+	pruneCmd := exec.Command("git", "worktree", "prune")
+	pruneCmd.Dir = primaryPath
+	_ = pruneCmd.Run()
+
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")
 	cmd.Dir = primaryPath
 	output, err := cmd.Output()
@@ -243,6 +247,52 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 	_ = output
 
 	return worktreePath, nil
+}
+
+func (f *OSFilesystem) PruneWorktrees(projectPath string) error {
+	projectPath = expandPath(projectPath)
+	primaryPath, warning, err := findPrimaryRepo(projectPath)
+	if err != nil {
+		return err
+	}
+	if warning != "" {
+		return nil
+	}
+
+	cmd := exec.Command("git", "worktree", "prune")
+	cmd.Dir = primaryPath
+	_, err = cmd.CombinedOutput()
+	return err
+}
+
+func (f *OSFilesystem) DeleteWorktree(projectPath, worktreePath string) error {
+	projectPath = expandPath(projectPath)
+	primaryPath, warning, err := findPrimaryRepo(projectPath)
+	if err != nil {
+		return err
+	}
+	if warning != "" {
+		return fmt.Errorf("%s", warning)
+	}
+
+	cleanPath := expandPath(worktreePath)
+	if cleanPath == "" {
+		return fmt.Errorf("worktree path cannot be empty")
+	}
+	if !isWithinProject(projectPath, cleanPath) {
+		return fmt.Errorf("worktree path is outside the project")
+	}
+	if filepath.Clean(cleanPath) == filepath.Clean(primaryPath) {
+		return fmt.Errorf("cannot delete the primary worktree")
+	}
+
+	cmd := exec.Command("git", "worktree", "remove", "--force", cleanPath)
+	cmd.Dir = primaryPath
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s: %s", err, string(output))
+	}
+	return nil
 }
 
 func findPrimaryRepo(projectPath string) (string, string, error) {
