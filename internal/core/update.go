@@ -68,6 +68,16 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		m.ToolIdx = 0
 		return m, nil
 
+	case MsgWorktreeDeleted:
+		if msg.Err != nil {
+			m.Mode = ModeError
+			m.Err = msg.Err
+			return m, nil
+		}
+		m.Mode = ModeWorktree
+		m.WorktreeDeletePath = ""
+		return m, []Effect{EffLoadWorktrees{ProjectPath: m.SelectedProject}}
+
 	case MsgToolQueryChanged:
 		m.ToolQuery = msg.Query
 		m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
@@ -88,6 +98,8 @@ func handleKey(m Model, key string) (Model, []Effect, bool) {
 		return handleBrowsingKey(m, key)
 	case ModeWorktree:
 		return handleWorktreeKey(m, key)
+	case ModeWorktreeDeleteConfirm:
+		return handleWorktreeDeleteConfirmKey(m, key)
 	case ModeTool:
 		return handleToolKey(m, key)
 	}
@@ -167,6 +179,13 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 			}}, true
 		}
 		return m, nil, true
+	case "ctrl+d":
+		if wt, ok := m.SelectedWorktree(); ok {
+			m.Mode = ModeWorktreeDeleteConfirm
+			m.WorktreeDeletePath = wt.Path
+			return m, nil, true
+		}
+		return m, nil, true
 	case "esc":
 		m.Mode = ModeBrowsing
 		m.WorktreeQuery = ""
@@ -175,6 +194,28 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 		m.WorktreeIdx = 0
 		m.ProjectWarning = ""
 		m.SelectedWorktreePath = ""
+		m.WorktreeDeletePath = ""
+		return m, nil, true
+	case "ctrl+c":
+		return m, []Effect{EffQuit{}}, true
+	}
+	return m, nil, false
+}
+
+func handleWorktreeDeleteConfirmKey(m Model, key string) (Model, []Effect, bool) {
+	switch key {
+	case "enter":
+		if m.WorktreeDeletePath != "" {
+			return m, []Effect{EffDeleteWorktree{
+				ProjectPath:  m.SelectedProject,
+				WorktreePath: m.WorktreeDeletePath,
+			}}, true
+		}
+		m.Mode = ModeWorktree
+		return m, nil, true
+	case "esc":
+		m.Mode = ModeWorktree
+		m.WorktreeDeletePath = ""
 		return m, nil, true
 	case "ctrl+c":
 		return m, []Effect{EffQuit{}}, true

@@ -53,6 +53,10 @@ func (m Model) View() string {
 			content += "\n" + warningStyle.Render(m.core.ProjectWarning)
 		}
 
+	case core.ModeWorktreeDeleteConfirm:
+		prompt := promptStyle.Render("Delete worktree?")
+		content = prompt + "\n" + suggestionStyle.Render(m.core.WorktreeDeletePath) + "\n" + suggestionStyle.Render("(enter to confirm, esc to cancel)")
+
 	case core.ModeTool:
 		prompt := promptStyle.Render("Select tool")
 		input := prompt + "\n" + m.toolInput.View()

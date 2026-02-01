@@ -6,6 +6,7 @@ const (
 	ModeLoading Mode = iota
 	ModeBrowsing
 	ModeWorktree
+	ModeWorktreeDeleteConfirm
 	ModeTool
 	ModeError
 )
@@ -20,6 +21,7 @@ type Model struct {
 	Err                  error
 	SelectedProject      string
 	SelectedWorktreePath string
+	WorktreeDeletePath   string
 	ProjectWarning       string
 	Worktrees            []Worktree
 	FilteredWT           []Worktree

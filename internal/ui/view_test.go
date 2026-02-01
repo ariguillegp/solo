@@ -104,6 +104,23 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	}
 }
 
+func TestViewWorktreeDeleteConfirm(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeWorktreeDeleteConfirm
+	m.core.WorktreeDeletePath = "/repo/feature"
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "Delete worktree?") {
+		t.Fatalf("expected delete prompt, got %q", view)
+	}
+	if !strings.Contains(view, "/repo/feature") {
+		t.Fatalf("expected delete path, got %q", view)
+	}
+	if !strings.Contains(view, "enter to confirm") {
+		t.Fatalf("expected confirmation hint, got %q", view)
+	}
+}
+
 func TestViewToolSuggestionAndNav(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeTool

@@ -135,6 +135,7 @@ This launches solo in a temporary tmux session to keep your current session clea
 | `↓` / `ctrl+j` | Next worktree |
 | `enter` | Select worktree / create new if typing |
 | `ctrl+n` | Create new worktree with typed branch name |
+| `ctrl+d` | Delete selected worktree (with confirmation) |
 | `esc` | Go back to project selection |
 | `ctrl+c` | Quit |
 

@@ -45,6 +45,13 @@ type MsgWorktreeCreated struct {
 
 func (MsgWorktreeCreated) isMsg() {}
 
+type MsgWorktreeDeleted struct {
+	Path string
+	Err  error
+}
+
+func (MsgWorktreeDeleted) isMsg() {}
+
 type MsgWorktreeQueryChanged struct {
 	Query string
 }
