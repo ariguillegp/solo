@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -19,7 +18,7 @@ func TestFindPrimaryRepoWarnings(t *testing.T) {
 		if primary != "" {
 			t.Fatalf("expected empty primary repo path, got %q", primary)
 		}
-		if warning != "Project has no primary repo. Create a 'main' worktree first." {
+		if warning != "Project has no repository. Create a project first." {
 			t.Fatalf("unexpected warning: %q", warning)
 		}
 	})
@@ -57,24 +56,19 @@ func TestCreateWorktreeFailsWithoutPrimaryRepo(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when no primary repo exists")
 	}
-	if err.Error() != "Project has no primary repo. Create a 'main' worktree first." {
+	if err.Error() != "Project has no repository. Create a project first." {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestCreateWorktreeCreatesSanitizedPath(t *testing.T) {
-	setGitIdentity(t)
-
 	projectPath := t.TempDir()
-	primaryPath := filepath.Join(projectPath, "main")
+	primaryPath := filepath.Join(projectPath, ".bare")
 	if err := os.MkdirAll(primaryPath, 0755); err != nil {
 		t.Fatalf("failed to create primary path: %v", err)
 	}
 
-	initRepo(t, primaryPath)
-	writeFile(t, filepath.Join(primaryPath, "README.md"), []byte("init\n"))
-	runGit(t, primaryPath, "add", ".")
-	runGit(t, primaryPath, "commit", "-m", "init")
+	initBareRepo(t, primaryPath)
 
 	fs := &OSFilesystem{}
 	worktreePath, err := fs.CreateWorktree(projectPath, "feature/test")
@@ -99,7 +93,7 @@ func TestListWorktreesWarnsWhenNoPrimaryRepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if listing.Warning != "Project has no primary repo. Create a 'main' worktree first." {
+	if listing.Warning != "Project has no repository. Create a project first." {
 		t.Fatalf("unexpected warning: %q", listing.Warning)
 	}
 	if len(listing.Worktrees) != 0 {
@@ -133,18 +127,13 @@ func TestListWorktreesWarnsWhenMultiplePrimaryRepos(t *testing.T) {
 }
 
 func TestDeleteWorktreeRemovesPath(t *testing.T) {
-	setGitIdentity(t)
-
 	projectPath := t.TempDir()
-	primaryPath := filepath.Join(projectPath, "main")
+	primaryPath := filepath.Join(projectPath, ".bare")
 	if err := os.MkdirAll(primaryPath, 0755); err != nil {
 		t.Fatalf("failed to create primary path: %v", err)
 	}
 
-	initRepo(t, primaryPath)
-	writeFile(t, filepath.Join(primaryPath, "README.md"), []byte("init\n"))
-	runGit(t, primaryPath, "add", ".")
-	runGit(t, primaryPath, "commit", "-m", "init")
+	initBareRepo(t, primaryPath)
 
 	fs := &OSFilesystem{}
 	worktreePath, err := fs.CreateWorktree(projectPath, "feature/delete")
@@ -161,8 +150,6 @@ func TestDeleteWorktreeRemovesPath(t *testing.T) {
 }
 
 func TestCreateProjectCreatesPrimaryRepo(t *testing.T) {
-	setGitIdentity(t)
-
 	projectPath := filepath.Join(t.TempDir(), "solo-project")
 
 	fs := &OSFilesystem{}
@@ -174,62 +161,30 @@ func TestCreateProjectCreatesPrimaryRepo(t *testing.T) {
 		t.Fatalf("expected project path %q, got %q", projectPath, createdPath)
 	}
 
+	barePath := filepath.Join(projectPath, ".bare")
+	if _, err := os.Stat(barePath); err != nil {
+		t.Fatalf("expected bare repo in project path: %v", err)
+	}
+
 	mainPath := filepath.Join(projectPath, "main")
-	if _, err := os.Stat(filepath.Join(mainPath, ".git")); err != nil {
-		t.Fatalf("expected git repo in main path: %v", err)
-	}
-
-	cmd := exec.Command("git", "log", "-1", "--pretty=%B")
-	cmd.Dir = mainPath
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("git log failed: %v", err)
-	}
-	if strings.TrimSpace(string(output)) != "Initial commit" {
-		t.Fatalf("unexpected initial commit message: %q", strings.TrimSpace(string(output)))
+	if _, err := os.Stat(mainPath); err != nil {
+		t.Fatalf("expected main worktree path: %v", err)
 	}
 }
 
-func setGitIdentity(t *testing.T) {
+func initBareRepo(t *testing.T, dir string) {
 	t.Helper()
-	t.Setenv("GIT_AUTHOR_NAME", "solo")
-	t.Setenv("GIT_AUTHOR_EMAIL", "solo@example.com")
-	t.Setenv("GIT_COMMITTER_NAME", "solo")
-	t.Setenv("GIT_COMMITTER_EMAIL", "solo@example.com")
-}
-
-func initRepo(t *testing.T, dir string) {
-	t.Helper()
-	cmd := exec.Command("git", "init", "-b", "main")
-	cmd.Dir = dir
+	cmd := exec.Command("git", "init", "--bare", "-b", "main", dir)
 	if output, err := cmd.CombinedOutput(); err != nil {
-		cmd = exec.Command("git", "init")
-		cmd.Dir = dir
+		cmd = exec.Command("git", "init", "--bare", dir)
 		if output2, err2 := cmd.CombinedOutput(); err2 != nil {
 			t.Fatalf("git init failed: %v: %s", err2, string(output2))
 		}
-		cmd = exec.Command("git", "branch", "-M", "main")
-		cmd.Dir = dir
+		cmd = exec.Command("git", "--git-dir", dir, "symbolic-ref", "HEAD", "refs/heads/main")
 		if output2, err2 := cmd.CombinedOutput(); err2 != nil {
 			t.Fatalf("git branch -M failed: %v: %s", err2, string(output2))
 		}
 	} else {
 		_ = output
-	}
-}
-
-func runGit(t *testing.T, dir string, args ...string) {
-	t.Helper()
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git %v failed: %v: %s", args, err, string(output))
-	}
-}
-
-func writeFile(t *testing.T, path string, contents []byte) {
-	t.Helper()
-	if err := os.WriteFile(path, contents, 0644); err != nil {
-		t.Fatalf("write file failed: %v", err)
 	}
 }
