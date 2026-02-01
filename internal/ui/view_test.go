@@ -166,6 +166,79 @@ func TestViewError(t *testing.T) {
 	}
 }
 
+func TestViewHelpLinePerMode(t *testing.T) {
+	tests := []struct {
+		name     string
+		mode     core.Mode
+		setup    func(m *Model)
+		helpLine string
+	}{
+		{
+			name:     "loading",
+			mode:     core.ModeLoading,
+			helpLine: "esc: quit",
+		},
+		{
+			name: "browsing",
+			mode: core.ModeBrowsing,
+			setup: func(m *Model) {
+				m.core.Query = "proj"
+				m.input.SetValue("proj")
+			},
+			helpLine: "up/down: navigate  enter: select  ctrl+n: create  esc: quit",
+		},
+		{
+			name: "worktree",
+			mode: core.ModeWorktree,
+			setup: func(m *Model) {
+				m.core.WorktreeQuery = "feat"
+				m.worktreeInput.SetValue("feat")
+			},
+			helpLine: "up/down: navigate  enter: select  ctrl+n: create  ctrl+d: delete  esc: back",
+		},
+		{
+			name: "worktree delete confirm",
+			mode: core.ModeWorktreeDeleteConfirm,
+			setup: func(m *Model) {
+				m.core.WorktreeDeletePath = "/repo/feature"
+			},
+			helpLine: "enter: confirm  esc: cancel",
+		},
+		{
+			name: "tool",
+			mode: core.ModeTool,
+			setup: func(m *Model) {
+				m.core.ToolQuery = "amp"
+				m.toolInput.SetValue("amp")
+			},
+			helpLine: "up/down: navigate  enter: open  esc: back",
+		},
+		{
+			name: "error",
+			mode: core.ModeError,
+			setup: func(m *Model) {
+				m.core.Err = errTest("boom")
+			},
+			helpLine: "esc: quit",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			m := newTestModel()
+			m.core.Mode = test.mode
+			if test.setup != nil {
+				test.setup(&m)
+			}
+
+			view := stripANSI(m.View())
+			if !strings.Contains(view, test.helpLine) {
+				t.Fatalf("expected help line %q, got %q", test.helpLine, view)
+			}
+		})
+	}
+}
+
 type errTest string
 
 func (e errTest) Error() string {
