@@ -6,7 +6,7 @@ A fast terminal-based project picker that launches tmux sessions for agent tools
 
 - Fuzzy search across project containers (directories with git worktrees)
 - Git worktree selection and branch creation
-- Create new projects with a default `main` worktree and empty commit
+- Create new projects with a default `main` worktree backed by a bare repo
 - Launch tmux sessions running `opencode` or `amp`
 - Keyboard-driven navigation
 - Theme picker for customizing the UI
@@ -16,7 +16,6 @@ A fast terminal-based project picker that launches tmux sessions for agent tools
 - tmux
 - git
 - `opencode` and/or `amp` on your PATH
-- Git author identity configured (`user.name` and `user.email`) for `--create-project`/`ctrl+n`
 
 ## Installation
 
@@ -82,13 +81,14 @@ Solo expects a project container that holds one worktree per directory:
 
 ```
 my-project/
+  .bare/
   main/
   feat-login/
   fix-bug/
 ```
 
-The project directory itself is not a git repo; the `main` worktree is the primary repo.
-The `main` worktree is created with an empty commit during project creation.
+The project directory itself stores a bare repo in `.bare`, while each worktree is a
+separate directory. The `main` worktree is created without an initial commit.
 
 Stale worktree references (from manually deleted directories) are automatically
 pruned whenever the worktree list is loaded, keeping the list accurate.
@@ -136,7 +136,6 @@ indicators when more suggestions are available.
 | `↑` / `ctrl+k` | Previous suggestion |
 | `↓` / `ctrl+j` | Next suggestion |
 | `enter` | Select project (go to worktree selection) |
-| `ctrl+n` | Create new project |
 | `ctrl+t` | Open theme picker |
 | `esc` / `ctrl+c` | Quit |
 
@@ -147,7 +146,6 @@ indicators when more suggestions are available.
 | `↑` / `ctrl+k` | Previous worktree |
 | `↓` / `ctrl+j` | Next worktree |
 | `enter` | Select worktree / create new if typing |
-| `ctrl+n` | Create new worktree with typed branch name |
 | `ctrl+d` | Delete selected worktree (with confirmation) |
 | `ctrl+t` | Open theme picker |
 | `esc` | Go back to project selection |

@@ -114,7 +114,11 @@ func handleBrowsingKey(m Model, key string) (Model, []Effect, bool) {
 		}
 		return m, nil, true
 	case "down", "ctrl+j":
-		if m.SelectedIdx < len(m.Filtered)-1 {
+		maxIdx := len(m.Filtered) - 1
+		if _, ok := m.CreateProjectPath(); ok {
+			maxIdx = len(m.Filtered)
+		}
+		if m.SelectedIdx < maxIdx {
 			m.SelectedIdx++
 		}
 		return m, nil, true
@@ -126,14 +130,7 @@ func handleBrowsingKey(m Model, key string) (Model, []Effect, bool) {
 			m.WorktreeIdx = 0
 			return m, []Effect{EffLoadWorktrees{ProjectPath: dir.Path}}, true
 		}
-		if m.Query != "" && len(m.RootPaths) > 0 {
-			path := m.RootPaths[0] + "/" + m.Query
-			return m, []Effect{EffCreateProject{Path: path}}, true
-		}
-		return m, nil, true
-	case "ctrl+n":
-		if m.Query != "" && len(m.RootPaths) > 0 {
-			path := m.RootPaths[0] + "/" + m.Query
+		if path, ok := m.CreateProjectPath(); ok {
 			return m, []Effect{EffCreateProject{Path: path}}, true
 		}
 		return m, nil, true
@@ -151,7 +148,11 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 		}
 		return m, nil, true
 	case "down", "ctrl+j":
-		if m.WorktreeIdx < len(m.FilteredWT)-1 {
+		maxIdx := len(m.FilteredWT) - 1
+		if _, ok := m.CreateWorktreeName(); ok {
+			maxIdx = len(m.FilteredWT)
+		}
+		if m.WorktreeIdx < maxIdx {
 			m.WorktreeIdx++
 		}
 		return m, nil, true
@@ -164,18 +165,10 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 			m.ToolIdx = 0
 			return m, nil, true
 		}
-		if m.WorktreeQuery != "" {
+		if name, ok := m.CreateWorktreeName(); ok {
 			return m, []Effect{EffCreateWorktree{
 				ProjectPath: m.SelectedProject,
-				BranchName:  m.WorktreeQuery,
-			}}, true
-		}
-		return m, nil, true
-	case "ctrl+n":
-		if m.WorktreeQuery != "" {
-			return m, []Effect{EffCreateWorktree{
-				ProjectPath: m.SelectedProject,
-				BranchName:  m.WorktreeQuery,
+				BranchName:  name,
 			}}, true
 		}
 		return m, nil, true

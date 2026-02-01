@@ -91,35 +91,51 @@ func (m Model) View() string {
 		header = m.styles.Title.Render("Step 1: Select Project")
 		prompt := m.styles.Prompt.Render("Enter the project directory:")
 		input := prompt + " " + m.input.View()
+		createPath, canCreate := m.core.CreateProjectPath()
+		createLabel := ""
+		if canCreate {
+			createLabel = m.styles.Suggestion.Render("create: " + createPath)
+		}
 
 		if len(m.core.Filtered) > 0 {
 			lines := make([]string, 0, len(m.core.Filtered))
 			for _, dir := range m.core.Filtered {
 				lines = append(lines, dir.Path)
 			}
+			if createLabel != "" {
+				lines = append(lines, createLabel)
+			}
 			content = input + "\n" + m.renderSuggestionList(lines, m.core.SelectedIdx)
-		} else if m.core.Query != "" {
-			content = input + "\n" + m.styles.Suggestion.Render("(create new)")
+		} else if createLabel != "" {
+			content = input + "\n" + m.renderSuggestionList([]string{createLabel}, m.core.SelectedIdx)
 		} else {
 			content = input
 		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
-			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+n", "create"}, {"ctrl+t", "theme"}, {"esc", "quit"},
+			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+t", "theme"}, {"esc", "quit"},
 		})
 
 	case core.ModeWorktree:
 		header = m.styles.Title.Render("Step 2: Select Worktree")
 		prompt := m.styles.Prompt.Render("Select worktree or create new branch:")
 		input := prompt + " " + m.worktreeInput.View()
+		createName, canCreate := m.core.CreateWorktreeName()
+		createLabel := ""
+		if canCreate {
+			createLabel = m.styles.Suggestion.Render("create: " + createName)
+		}
 
 		if len(m.core.FilteredWT) > 0 {
 			lines := make([]string, 0, len(m.core.FilteredWT))
 			for _, wt := range m.core.FilteredWT {
 				lines = append(lines, wt.Path)
 			}
+			if createLabel != "" {
+				lines = append(lines, createLabel)
+			}
 			content = input + "\n" + m.renderSuggestionList(lines, m.core.WorktreeIdx)
-		} else if m.core.WorktreeQuery != "" {
-			content = input + "\n" + m.styles.Suggestion.Render("(create new: "+m.core.WorktreeQuery+")")
+		} else if createLabel != "" {
+			content = input + "\n" + m.renderSuggestionList([]string{createLabel}, m.core.WorktreeIdx)
 		} else {
 			content = input
 		}
@@ -128,7 +144,7 @@ func (m Model) View() string {
 			content += "\n" + m.styles.Warning.Render(m.core.ProjectWarning)
 		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
-			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+n", "create"}, {"ctrl+d", "delete"}, {"ctrl+t", "theme"}, {"esc", "back"},
+			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+t", "theme"}, {"esc", "back"},
 		})
 
 	case core.ModeWorktreeDeleteConfirm:

@@ -1,5 +1,10 @@
 package core
 
+import (
+	"path/filepath"
+	"strings"
+)
+
 type Mode int
 
 const (
@@ -62,4 +67,34 @@ func (m Model) SelectedTool() (string, bool) {
 		return "", false
 	}
 	return m.FilteredTools[m.ToolIdx], true
+}
+
+func (m Model) CreateProjectPath() (string, bool) {
+	if m.Query == "" || len(m.RootPaths) == 0 {
+		return "", false
+	}
+	query := strings.TrimSpace(m.Query)
+	if query == "" || filepath.IsAbs(query) {
+		return "", false
+	}
+	path := filepath.Join(m.RootPaths[0], query)
+	for _, dir := range m.Dirs {
+		if dir.Path == path {
+			return "", false
+		}
+	}
+	return path, true
+}
+
+func (m Model) CreateWorktreeName() (string, bool) {
+	name := strings.TrimSpace(m.WorktreeQuery)
+	if name == "" {
+		return "", false
+	}
+	for _, wt := range m.Worktrees {
+		if wt.Name == name || wt.Branch == name {
+			return "", false
+		}
+	}
+	return name, true
 }

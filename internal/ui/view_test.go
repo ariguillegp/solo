@@ -57,11 +57,12 @@ func TestViewBrowsingCreateNew(t *testing.T) {
 	m.core.Mode = core.ModeBrowsing
 	m.core.Query = "newproj"
 	m.input.SetValue("newproj")
+	m.core.RootPaths = []string{"/tmp"}
 	m.core.Filtered = nil
 	m.core.SelectedIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "(create new)") {
+	if !strings.Contains(view, "create: ") {
 		t.Fatalf("expected create new hint, got %q", view)
 	}
 }
@@ -95,7 +96,7 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	m.core.WorktreeIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "(create new: feature-x)") {
+	if !strings.Contains(view, "create: feature-x") {
 		t.Fatalf("expected create new worktree hint, got %q", view)
 	}
 }
@@ -178,7 +179,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.Query = "proj"
 				m.input.SetValue("proj")
 			},
-			helpParts: []string{"navigate", "enter", "select", "ctrl+n", "create", "esc", "quit"},
+			helpParts: []string{"navigate", "enter", "select", "esc", "quit"},
 		},
 		{
 			name: "worktree",
@@ -187,7 +188,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.WorktreeQuery = "feat"
 				m.worktreeInput.SetValue("feat")
 			},
-			helpParts: []string{"navigate", "enter", "select", "ctrl+n", "create", "ctrl+d", "delete", "esc", "back"},
+			helpParts: []string{"navigate", "enter", "select", "ctrl+d", "delete", "esc", "back"},
 		},
 		{
 			name: "worktree delete confirm",

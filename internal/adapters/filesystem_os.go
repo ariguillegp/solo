@@ -17,8 +17,11 @@ func NewOSFilesystem() *OSFilesystem {
 	return &OSFilesystem{}
 }
 
+const bareRepoDir = ".bare"
+
 var ignoreDirs = map[string]bool{
 	".git":         true,
+	".bare":        true,
 	"node_modules": true,
 	"vendor":       true,
 	".cache":       true,
@@ -72,6 +75,15 @@ func scanDir(path string, depth, maxDepth int, seen map[string]bool, dirs *[]cor
 			continue
 		}
 
+		if hasBareRepo(fullPath) {
+			*dirs = append(*dirs, core.DirEntry{
+				Path:   fullPath,
+				Name:   name,
+				Exists: true,
+			})
+			continue
+		}
+
 		if hasGitChild(fullPath) {
 			*dirs = append(*dirs, core.DirEntry{
 				Path:   fullPath,
@@ -92,6 +104,11 @@ func scanDir(path string, depth, maxDepth int, seen map[string]bool, dirs *[]cor
 func hasGitMarker(path string) bool {
 	_, err := os.Stat(filepath.Join(path, ".git"))
 	return err == nil
+}
+
+func hasBareRepo(path string) bool {
+	info, err := os.Stat(filepath.Join(path, bareRepoDir))
+	return err == nil && info.IsDir()
 }
 
 func hasGitChild(path string) bool {
@@ -125,29 +142,30 @@ func expandPath(path string) string {
 
 func (f *OSFilesystem) CreateProject(path string) (string, error) {
 	projectPath := expandPath(path)
-	mainPath := filepath.Join(projectPath, "main")
-	if err := os.MkdirAll(mainPath, 0755); err != nil {
+	if err := os.MkdirAll(projectPath, 0755); err != nil {
 		return "", err
 	}
 
-	initCmd := exec.Command("git", "init", "-b", "main")
-	initCmd.Dir = mainPath
+	barePath := filepath.Join(projectPath, bareRepoDir)
+	if err := os.MkdirAll(barePath, 0755); err != nil {
+		return "", err
+	}
+
+	initCmd := exec.Command("git", "init", "--bare", "-b", "main", barePath)
 	if err := initCmd.Run(); err != nil {
-		fallbackCmd := exec.Command("git", "init")
-		fallbackCmd.Dir = mainPath
+		fallbackCmd := exec.Command("git", "init", "--bare", barePath)
 		if err := fallbackCmd.Run(); err != nil {
 			return "", err
 		}
-		renameCmd := exec.Command("git", "branch", "-M", "main")
-		renameCmd.Dir = mainPath
+		renameCmd := exec.Command("git", "--git-dir", barePath, "symbolic-ref", "HEAD", "refs/heads/main")
 		if err := renameCmd.Run(); err != nil {
 			return "", err
 		}
 	}
 
-	commitCmd := exec.Command("git", "commit", "--allow-empty", "-m", "Initial commit")
-	commitCmd.Dir = mainPath
-	if output, err := commitCmd.CombinedOutput(); err != nil {
+	mainPath := filepath.Join(projectPath, "main")
+	cmd := exec.Command("git", "--git-dir", barePath, "worktree", "add", "--orphan", "-b", "main", mainPath)
+	if output, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("%s: %s", err, string(output))
 	}
 
@@ -164,12 +182,10 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 		return core.WorktreeListing{Warning: warning}, nil
 	}
 
-	pruneCmd := exec.Command("git", "worktree", "prune")
-	pruneCmd.Dir = primaryPath
+	pruneCmd := gitCommand(primaryPath, "worktree", "prune")
 	_ = pruneCmd.Run()
 
-	cmd := exec.Command("git", "worktree", "list", "--porcelain")
-	cmd.Dir = primaryPath
+	cmd := gitCommand(primaryPath, "worktree", "list", "--porcelain")
 	output, err := cmd.Output()
 	if err != nil {
 		return core.WorktreeListing{}, err
@@ -201,6 +217,9 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 
 	var filtered []core.Worktree
 	for _, wt := range worktrees {
+		if isBareRepoPath(primaryPath) && filepath.Clean(wt.Path) == filepath.Clean(primaryPath) {
+			continue
+		}
 		if !isWithinProject(projectPath, wt.Path) {
 			continue
 		}
@@ -232,12 +251,19 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 	worktreeDir := core.SanitizeWorktreeName(cleanBranch)
 	worktreePath := filepath.Join(projectPath, worktreeDir)
 
-	cmd := exec.Command("git", "worktree", "add", "-b", cleanBranch, worktreePath)
-	cmd.Dir = primaryPath
+	hasCommit, _ := repoHasCommit(primaryPath)
+	if !hasCommit {
+		cmd := gitCommand(primaryPath, "worktree", "add", "--orphan", "-b", cleanBranch, worktreePath)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return "", fmt.Errorf("%s: %s", err, string(output))
+		}
+		return worktreePath, nil
+	}
+
+	cmd := gitCommand(primaryPath, "worktree", "add", "-b", cleanBranch, worktreePath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		cmd = exec.Command("git", "worktree", "add", worktreePath, cleanBranch)
-		cmd.Dir = primaryPath
+		cmd = gitCommand(primaryPath, "worktree", "add", worktreePath, cleanBranch)
 		output2, err2 := cmd.CombinedOutput()
 		if err2 != nil {
 			return "", fmt.Errorf("%s: %s", err2, string(output2))
@@ -259,8 +285,7 @@ func (f *OSFilesystem) PruneWorktrees(projectPath string) error {
 		return nil
 	}
 
-	cmd := exec.Command("git", "worktree", "prune")
-	cmd.Dir = primaryPath
+	cmd := gitCommand(primaryPath, "worktree", "prune")
 	_, err = cmd.CombinedOutput()
 	return err
 }
@@ -286,8 +311,7 @@ func (f *OSFilesystem) DeleteWorktree(projectPath, worktreePath string) error {
 		return fmt.Errorf("cannot delete the primary worktree")
 	}
 
-	cmd := exec.Command("git", "worktree", "remove", "--force", cleanPath)
-	cmd.Dir = primaryPath
+	cmd := gitCommand(primaryPath, "worktree", "remove", "--force", cleanPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %s", err, string(output))
@@ -296,6 +320,10 @@ func (f *OSFilesystem) DeleteWorktree(projectPath, worktreePath string) error {
 }
 
 func findPrimaryRepo(projectPath string) (string, string, error) {
+	if hasBareRepo(projectPath) {
+		return filepath.Join(projectPath, bareRepoDir), "", nil
+	}
+
 	entries, err := os.ReadDir(projectPath)
 	if err != nil {
 		return "", "", err
@@ -317,7 +345,7 @@ func findPrimaryRepo(projectPath string) (string, string, error) {
 	}
 
 	if len(primaryRepos) == 0 {
-		return "", "Project has no primary repo. Create a 'main' worktree first.", nil
+		return "", "Project has no repository. Create a project first.", nil
 	}
 	if len(primaryRepos) > 1 {
 		return "", "Project has multiple primary repos. Keep only one worktree with a .git directory.", nil
@@ -332,6 +360,30 @@ func isPrimaryRepo(path string) bool {
 		return false
 	}
 	return info.IsDir()
+}
+
+func isBareRepoPath(path string) bool {
+	return filepath.Base(path) == bareRepoDir
+}
+
+func gitCommand(repoPath string, args ...string) *exec.Cmd {
+	if isBareRepoPath(repoPath) {
+		cmd := exec.Command("git", append([]string{"--git-dir", repoPath}, args...)...)
+		cmd.Dir = filepath.Dir(repoPath)
+		return cmd
+	}
+	cmd := exec.Command("git", args...)
+	cmd.Dir = repoPath
+	return cmd
+}
+
+func repoHasCommit(repoPath string) (bool, error) {
+	cmd := gitCommand(repoPath, "rev-parse", "--verify", "HEAD")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		_ = output
+		return false, nil
+	}
+	return true, nil
 }
 
 func isWithinProject(projectPath, worktreePath string) bool {
