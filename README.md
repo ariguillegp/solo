@@ -2,7 +2,7 @@
 
 A fast terminal-based project picker that launches tmux sessions for agent tools.
 
-![demo](demo.gif)
+![demo](assets/demo.gif)
 
 ## Features
 
