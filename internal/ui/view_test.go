@@ -12,7 +12,7 @@ import (
 )
 
 func newTestModel() Model {
-	m := New(nil, nil)
+	m := New(nil, nil, nil)
 	m.width = 0
 	m.height = 0
 	return m
@@ -149,6 +149,17 @@ func TestViewToolNoCreateNew(t *testing.T) {
 	}
 }
 
+func TestViewToolStarting(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeToolStarting
+	m.core.PendingSpec = &core.SessionSpec{Tool: "opencode"}
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "Starting opencode") {
+		t.Fatalf("expected tool starting view, got %q", view)
+	}
+}
+
 func TestViewError(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeError
@@ -206,6 +217,11 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.toolInput.SetValue("amp")
 			},
 			helpParts: []string{"navigate", "enter", "open", "esc", "back"},
+		},
+		{
+			name:      "tool starting",
+			mode:      core.ModeToolStarting,
+			helpParts: []string{"esc", "back"},
 		},
 		{
 			name: "error",

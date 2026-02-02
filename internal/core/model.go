@@ -3,6 +3,7 @@ package core
 import (
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Mode int
@@ -13,6 +14,7 @@ const (
 	ModeWorktree
 	ModeWorktreeDeleteConfirm
 	ModeTool
+	ModeToolStarting
 	ModeError
 )
 
@@ -36,6 +38,10 @@ type Model struct {
 	FilteredTools        []string
 	ToolQuery            string
 	ToolIdx              int
+	ToolWarmStart        map[string]time.Time
+	ToolErrors           map[string]string
+	ToolError            string
+	PendingSpec          *SessionSpec
 }
 
 func NewModel(roots []string) Model {

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"os"
 	"strings"
 	"time"
 )
@@ -31,73 +30,47 @@ type WorktreeListing struct {
 	Warning   string
 }
 
-var defaultTools = []string{"opencode", "amp"}
-
-var AllowedTools = append([]string(nil), defaultTools...)
-
-func ConfigureAllowedToolsFromEnv() {
-	raw := strings.TrimSpace(os.Getenv("SOLO_TOOLS"))
-	if raw == "" {
-		return
-	}
-	tools := parseToolList(raw)
-	if len(tools) == 0 {
-		return
-	}
-	ConfigureAllowedTools(tools)
+type ToolDefinition struct {
+	Name string
+	Env  []string
 }
 
-func ConfigureAllowedTools(tools []string) {
-	if len(tools) == 0 {
-		AllowedTools = append([]string(nil), defaultTools...)
-		return
-	}
-	AllowedTools = uniqueTools(tools)
+var toolDefinitions = []ToolDefinition{
+	{
+		Name: "opencode",
+		Env:  []string{`OPENCODE_CONFIG_CONTENT={"theme":"gruvbox"}`},
+	},
+	{Name: "amp"},
 }
 
 func SupportedTools() []string {
-	return append([]string(nil), AllowedTools...)
+	names := make([]string, 0, len(toolDefinitions))
+	for _, tool := range toolDefinitions {
+		names = append(names, tool.Name)
+	}
+	return names
 }
 
 func IsSupportedTool(tool string) bool {
-	for _, allowed := range AllowedTools {
-		if tool == allowed {
+	for _, allowed := range toolDefinitions {
+		if tool == allowed.Name {
 			return true
 		}
 	}
 	return false
 }
 
-func parseToolList(raw string) []string {
-	parts := strings.FieldsFunc(raw, func(r rune) bool {
-		switch r {
-		case ',', '\n', '\t', ' ':
-			return true
-		default:
-			return false
-		}
-	})
-	if len(parts) == 0 {
+func ToolEnv(tool string) []string {
+	tool = strings.TrimSpace(tool)
+	if tool == "" {
 		return nil
 	}
-	return uniqueTools(parts)
-}
-
-func uniqueTools(tools []string) []string {
-	seen := make(map[string]struct{}, len(tools))
-	unique := make([]string, 0, len(tools))
-	for _, tool := range tools {
-		clean := strings.TrimSpace(tool)
-		if clean == "" {
-			continue
+	for _, def := range toolDefinitions {
+		if def.Name == tool {
+			return append([]string(nil), def.Env...)
 		}
-		if _, ok := seen[clean]; ok {
-			continue
-		}
-		seen[clean] = struct{}{}
-		unique = append(unique, clean)
 	}
-	return unique
+	return nil
 }
 
 func SanitizeWorktreeName(name string) string {

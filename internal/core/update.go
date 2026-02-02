@@ -1,5 +1,7 @@
 package core
 
+import "time"
+
 func Update(m Model, msg Msg) (Model, []Effect) {
 	switch msg := msg.(type) {
 	case MsgScanCompleted:
@@ -62,11 +64,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 			return m, nil
 		}
 		m.SelectedWorktreePath = msg.Path
-		m.Mode = ModeTool
-		m.ToolQuery = ""
-		m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
-		m.ToolIdx = 0
-		return m, nil
+		return enterToolMode(m)
 
 	case MsgWorktreeDeleted:
 		if msg.Err != nil {
@@ -82,6 +80,55 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		m.ToolQuery = msg.Query
 		m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
 		m.ToolIdx = 0
+		m.ToolError = ""
+		return m, nil
+
+	case MsgToolPrewarmFailed:
+		if m.ToolErrors == nil {
+			m.ToolErrors = make(map[string]string)
+		}
+		errText := "prewarm failed"
+		if msg.Err != nil {
+			errText = msg.Err.Error()
+		}
+		m.ToolErrors[msg.Tool] = errText
+		if m.Mode == ModeToolStarting && m.PendingSpec != nil && m.PendingSpec.Tool == msg.Tool {
+			m.ToolError = errText
+			m.PendingSpec = nil
+			m.Mode = ModeTool
+		}
+		return m, nil
+
+	case MsgToolPrewarmStarted:
+		if m.ToolWarmStart == nil {
+			m.ToolWarmStart = make(map[string]time.Time)
+		}
+		m.ToolWarmStart[msg.Tool] = msg.StartedAt
+		return m, nil
+
+	case MsgToolPrewarmExisting:
+		if m.ToolWarmStart == nil {
+			m.ToolWarmStart = make(map[string]time.Time)
+		}
+		m.ToolWarmStart[msg.Tool] = time.Time{}
+		if m.ToolErrors != nil {
+			delete(m.ToolErrors, msg.Tool)
+		}
+		if m.Mode == ModeToolStarting && m.PendingSpec != nil && m.PendingSpec.Tool == msg.Tool {
+			spec := *m.PendingSpec
+			m.PendingSpec = nil
+			m.ToolError = ""
+			return m, []Effect{EffOpenSession{Spec: spec}}
+		}
+		return m, nil
+
+	case MsgToolDelayElapsed:
+		if m.Mode == ModeToolStarting && m.PendingSpec != nil && m.PendingSpec.Tool == msg.Tool {
+			spec := *m.PendingSpec
+			m.PendingSpec = nil
+			m.ToolError = ""
+			return m, []Effect{EffOpenSession{Spec: spec}}
+		}
 		return m, nil
 	}
 
@@ -102,6 +149,8 @@ func handleKey(m Model, key string) (Model, []Effect, bool) {
 		return handleWorktreeDeleteConfirmKey(m, key)
 	case ModeTool:
 		return handleToolKey(m, key)
+	case ModeToolStarting:
+		return handleToolStartingKey(m, key)
 	}
 	return m, nil, false
 }
@@ -159,11 +208,8 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 	case "enter":
 		if wt, ok := m.SelectedWorktree(); ok {
 			m.SelectedWorktreePath = wt.Path
-			m.Mode = ModeTool
-			m.ToolQuery = ""
-			m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
-			m.ToolIdx = 0
-			return m, nil, true
+			m, effects := enterToolMode(m)
+			return m, effects, true
 		}
 		if name, ok := m.CreateWorktreeName(); ok {
 			return m, []Effect{EffCreateWorktree{
@@ -222,30 +268,67 @@ func handleToolKey(m Model, key string) (Model, []Effect, bool) {
 		if m.ToolIdx > 0 {
 			m.ToolIdx--
 		}
+		m.ToolError = ""
 		return m, nil, true
 	case "down", "ctrl+j":
 		if m.ToolIdx < len(m.FilteredTools)-1 {
 			m.ToolIdx++
 		}
+		m.ToolError = ""
 		return m, nil, true
 	case "enter":
 		if tool, ok := m.SelectedTool(); ok && m.SelectedWorktreePath != "" {
+			if errText, ok := m.ToolErrors[tool]; ok && errText != "" {
+				m.ToolError = errText
+				delete(m.ToolErrors, tool)
+				return m, nil, true
+			}
+
 			spec := SessionSpec{
 				DirPath: m.SelectedWorktreePath,
 				Tool:    tool,
 			}
-			return m, []Effect{EffOpenSession{Spec: spec}}, true
+			m.PendingSpec = &spec
+			m.Mode = ModeToolStarting
+			m.ToolError = ""
+			return m, []Effect{EffCheckToolReady{Spec: spec}}, true
 		}
 		return m, nil, true
 	case "esc":
 		m.Mode = ModeWorktree
 		m.ToolQuery = ""
 		m.ToolIdx = 0
+		m.ToolError = ""
 		return m, nil, true
 	case "ctrl+c":
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
+}
+
+func handleToolStartingKey(m Model, key string) (Model, []Effect, bool) {
+	switch key {
+	case "esc":
+		m.Mode = ModeTool
+		m.PendingSpec = nil
+		m.ToolError = ""
+		return m, nil, true
+	case "ctrl+c":
+		return m, []Effect{EffQuit{}}, true
+	}
+	return m, nil, true
+}
+
+func enterToolMode(m Model) (Model, []Effect) {
+	m.Mode = ModeTool
+	m.ToolQuery = ""
+	m.FilteredTools = FilterTools(m.Tools, m.ToolQuery)
+	m.ToolIdx = 0
+	m.ToolError = ""
+	m.PendingSpec = nil
+	m.ToolWarmStart = make(map[string]time.Time, len(m.Tools))
+	m.ToolErrors = make(map[string]string, len(m.Tools))
+	return m, []Effect{EffPrewarmAllTools{DirPath: m.SelectedWorktreePath, Tools: m.Tools}}
 }
 
 func Init(m Model) (Model, []Effect) {

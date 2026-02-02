@@ -30,8 +30,6 @@ func main() {
 	flag.BoolVar(&detachFlag, "detach", false, "Create the tmux session without attaching")
 	flag.Parse()
 
-	core.ConfigureAllowedToolsFromEnv()
-
 	roots := flag.Args()
 	if len(roots) == 0 {
 		roots = []string{"~/Work/tries"}
@@ -53,7 +51,7 @@ func main() {
 		return
 	}
 
-	m := ui.New(roots, fs)
+	m := ui.New(roots, fs, sessions)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	result, err := p.Run()

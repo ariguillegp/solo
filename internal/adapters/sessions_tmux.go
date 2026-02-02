@@ -18,37 +18,36 @@ func NewTmuxSession() *TmuxSession {
 }
 
 func (t *TmuxSession) OpenSession(spec core.SessionSpec) error {
-	if strings.TrimSpace(spec.DirPath) == "" {
-		return fmt.Errorf("session directory is required")
-	}
-	if strings.TrimSpace(spec.Tool) == "" {
-		return fmt.Errorf("session tool is required")
+	sessionName, err := sessionNameFor(spec)
+	if err != nil {
+		return err
 	}
 
-	cleanPath := filepath.Clean(spec.DirPath)
-	sessionName := strings.Join([]string{
-		sanitizeSessionPart(cleanPath, "worktree"),
-		sanitizeSessionPart(spec.Tool, "tool"),
-	}, "__")
+	if _, err := ensureSession(sessionName, spec.DirPath, spec.Tool); err != nil {
+		return err
+	}
 
 	if spec.Detach {
-		return ensureSession(sessionName, spec.DirPath, spec.Tool)
+		return nil
 	}
 
 	if os.Getenv("TMUX") != "" {
-		if err := ensureSession(sessionName, spec.DirPath, spec.Tool); err != nil {
-			return err
-		}
 		return switchClient(sessionName)
 	}
 
-	command := wrapToolCommand(spec.Tool)
-	args := []string{"new-session", "-A", "-s", sessionName, "-c", spec.DirPath, command.shell, "-l", "-c", command.cmd}
-	cmd := exec.Command("tmux", args...)
+	cmd := exec.Command("tmux", "attach-session", "-t", tmuxSessionTarget(sessionName))
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func (t *TmuxSession) PrewarmSession(spec core.SessionSpec) (bool, error) {
+	sessionName, err := sessionNameFor(spec)
+	if err != nil {
+		return false, err
+	}
+	return ensureSession(sessionName, spec.DirPath, spec.Tool)
 }
 
 var sessionNamePattern = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
@@ -65,55 +64,63 @@ func sanitizeSessionPart(name, fallback string) string {
 	return name
 }
 
-func ensureSession(sessionName, dirPath, tool string) error {
-	check := exec.Command("tmux", "has-session", "-t", sessionName)
+func sessionNameFor(spec core.SessionSpec) (string, error) {
+	if strings.TrimSpace(spec.DirPath) == "" {
+		return "", fmt.Errorf("session directory is required")
+	}
+	if strings.TrimSpace(spec.Tool) == "" {
+		return "", fmt.Errorf("session tool is required")
+	}
+
+	cleanPath := filepath.Clean(spec.DirPath)
+	return strings.Join([]string{
+		sanitizeSessionPart(cleanPath, "worktree"),
+		sanitizeSessionPart(spec.Tool, "tool"),
+	}, "__"), nil
+}
+
+func ensureSession(sessionName, dirPath, tool string) (bool, error) {
+	check := exec.Command("tmux", "has-session", "-t", tmuxSessionTarget(sessionName))
 	if check.Run() == nil {
-		return nil
+		return false, nil
 	}
 
-	command := wrapToolCommand(tool)
-	args := []string{"new-session", "-d", "-s", sessionName, "-c", dirPath, command.shell, "-l", "-c", command.cmd}
+	shell, commandArgs := toolCommand(tool)
+	args := []string{"new-session", "-d", "-s", sessionName}
+	args = append(args, tmuxEnvArgs(tool)...)
+	args = append(args, "-c", dirPath, shell)
+	args = append(args, commandArgs...)
 	cmd := exec.Command("tmux", args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-type shellCommand struct {
-	shell string
-	cmd   string
-}
-
-func wrapToolCommand(tool string) shellCommand {
-	shell := os.Getenv("SHELL")
-	if strings.TrimSpace(shell) == "" {
-		shell = "/bin/sh"
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("failed to create tmux session: %w (output: %s)", err, string(output))
 	}
-	return shellCommand{
-		shell: shell,
-		cmd:   fmt.Sprintf("%s; exec %s", tool, shell),
-	}
+
+	return true, nil
 }
 
 func switchClient(sessionName string) error {
-	args := []string{"switch-client", "-t", sessionName}
+	args := []string{"switch-client", "-t", tmuxSessionTarget(sessionName)}
 	client := currentClientTTY()
 	if client != "" {
-		args = []string{"switch-client", "-c", client, "-t", sessionName}
+		args = []string{"switch-client", "-c", client, "-t", tmuxSessionTarget(sessionName)}
 	}
 	cmd := exec.Command("tmux", args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil && client != "" {
-		fallback := exec.Command("tmux", "switch-client", "-t", sessionName)
+		fallback := exec.Command("tmux", "switch-client", "-t", tmuxSessionTarget(sessionName))
 		fallback.Stdin = os.Stdin
 		fallback.Stdout = os.Stdout
 		fallback.Stderr = os.Stderr
 		return fallback.Run()
 	}
 	return nil
+}
+
+func tmuxSessionTarget(sessionName string) string {
+	return "=" + sessionName
 }
 
 func currentClientTTY() string {
@@ -127,4 +134,37 @@ func currentClientTTY() string {
 		return ""
 	}
 	return strings.TrimSpace(string(output))
+}
+
+func toolCommand(tool string) (string, []string) {
+	shell := os.Getenv("SHELL")
+	if strings.TrimSpace(shell) == "" {
+		shell = "/bin/sh"
+	}
+	return shell, []string{"-c", `"$1"; exec "$0"`, shell, tool}
+}
+
+func tmuxEnvArgs(tool string) []string {
+	keys := []string{
+		"COLORFGBG",
+		"COLORTERM",
+		"TERM",
+		"TERM_PROGRAM",
+		"TERM_PROGRAM_VERSION",
+	}
+	args := make([]string, 0, len(keys)*2+2)
+
+	for _, env := range core.ToolEnv(tool) {
+		args = append(args, "-e", env)
+	}
+
+	for _, key := range keys {
+		val := strings.TrimSpace(os.Getenv(key))
+		if val == "" {
+			continue
+		}
+		args = append(args, "-e", key+"="+val)
+	}
+
+	return args
 }

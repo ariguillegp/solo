@@ -45,3 +45,16 @@ type EffDeleteWorktree struct {
 }
 
 func (EffDeleteWorktree) isEffect() {}
+
+type EffPrewarmAllTools struct {
+	DirPath string
+	Tools   []string
+}
+
+func (EffPrewarmAllTools) isEffect() {}
+
+type EffCheckToolReady struct {
+	Spec SessionSpec
+}
+
+func (EffCheckToolReady) isEffect() {}

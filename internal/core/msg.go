@@ -1,5 +1,7 @@
 package core
 
+import "time"
+
 type Msg interface {
 	isMsg()
 }
@@ -63,3 +65,29 @@ type MsgToolQueryChanged struct {
 }
 
 func (MsgToolQueryChanged) isMsg() {}
+
+type MsgToolPrewarmFailed struct {
+	Tool string
+	Err  error
+}
+
+func (MsgToolPrewarmFailed) isMsg() {}
+
+type MsgToolPrewarmStarted struct {
+	Tool      string
+	StartedAt time.Time
+}
+
+func (MsgToolPrewarmStarted) isMsg() {}
+
+type MsgToolPrewarmExisting struct {
+	Tool string
+}
+
+func (MsgToolPrewarmExisting) isMsg() {}
+
+type MsgToolDelayElapsed struct {
+	Tool string
+}
+
+func (MsgToolDelayElapsed) isMsg() {}

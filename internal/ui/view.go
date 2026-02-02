@@ -166,9 +166,20 @@ func (m Model) View() string {
 		} else {
 			content = input
 		}
+		if m.core.ToolError != "" {
+			content += "\n" + m.styles.Error.Render(m.core.ToolError)
+		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
 			{"↑/↓", "navigate"}, {"enter", "open"}, {"ctrl+t", "theme"}, {"esc", "back"},
 		})
+
+	case core.ModeToolStarting:
+		toolName := "tool"
+		if m.core.PendingSpec != nil && m.core.PendingSpec.Tool != "" {
+			toolName = m.core.PendingSpec.Tool
+		}
+		content = fmt.Sprintf("%s Starting %s...", m.spinner.View(), toolName)
+		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "back"}})
 
 	case core.ModeError:
 		content = m.styles.Error.Render(fmt.Sprintf("Error: %v", m.core.Err))

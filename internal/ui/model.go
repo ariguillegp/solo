@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,6 +18,7 @@ type Model struct {
 	toolInput       textinput.Model
 	spinner         spinner.Model
 	fs              ports.Filesystem
+	sessions        ports.SessionManager
 	maxDepth        int
 	width           int
 	height          int
@@ -28,7 +31,7 @@ type Model struct {
 	prevStyles      Styles
 }
 
-func New(roots []string, fs ports.Filesystem) Model {
+func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Model {
 	ti := textinput.New()
 	ti.Prompt = ""
 	ti.Focus()
@@ -49,6 +52,7 @@ func New(roots []string, fs ports.Filesystem) Model {
 		toolInput:     tti,
 		spinner:       sp,
 		fs:            fs,
+		sessions:      sessions,
 		maxDepth:      2,
 		themes:        allThemes,
 		themeIdx:      0,
@@ -131,6 +135,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeTool {
 			m.worktreeInput.Blur()
 			m.toolInput.SetValue("")
+			m.toolInput.Focus()
+		}
+		if prevMode == core.ModeTool && m.core.Mode == core.ModeToolStarting {
+			m.toolInput.Blur()
+		}
+		if prevMode == core.ModeToolStarting && m.core.Mode == core.ModeTool {
 			m.toolInput.Focus()
 		}
 		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeWorktreeDeleteConfirm {
@@ -242,6 +252,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmd := m.runEffects(effects)
 		return m, cmd
+
+	case core.MsgToolPrewarmFailed:
+		coreModel, effects := core.Update(m.core, msg)
+		m.core = coreModel
+		cmd := m.runEffects(effects)
+		return m, cmd
+
+	case core.MsgToolPrewarmStarted:
+		coreModel, effects := core.Update(m.core, msg)
+		m.core = coreModel
+		cmd := m.runEffects(effects)
+		return m, cmd
+
+	case core.MsgToolPrewarmExisting:
+		coreModel, effects := core.Update(m.core, msg)
+		m.core = coreModel
+		if spec := extractSessionSpec(effects); spec != nil {
+			m.SelectedSpec = spec
+		}
+		cmd := m.runEffects(effects)
+		return m, cmd
+
+	case core.MsgToolDelayElapsed:
+		coreModel, effects := core.Update(m.core, msg)
+		m.core = coreModel
+		if spec := extractSessionSpec(effects); spec != nil {
+			m.SelectedSpec = spec
+		}
+		cmd := m.runEffects(effects)
+		return m, cmd
 	}
 
 	return m, nil
@@ -288,6 +328,10 @@ func (m Model) runEffects(effects []core.Effect) tea.Cmd {
 			cmds = append(cmds, m.createWorktreeCmd(e.ProjectPath, e.BranchName))
 		case core.EffDeleteWorktree:
 			cmds = append(cmds, m.deleteWorktreeCmd(e.ProjectPath, e.WorktreePath))
+		case core.EffPrewarmAllTools:
+			cmds = append(cmds, m.prewarmAllToolsCmd(e.DirPath, e.Tools))
+		case core.EffCheckToolReady:
+			cmds = append(cmds, m.checkToolReadyCmd(e.Spec))
 		case core.EffOpenSession:
 			cmds = append(cmds, tea.Quit)
 		case core.EffQuit:
@@ -344,4 +388,55 @@ func (m Model) deleteWorktreeCmd(projectPath, worktreePath string) tea.Cmd {
 		err := m.fs.DeleteWorktree(projectPath, worktreePath)
 		return worktreeDeletedMsg{path: worktreePath, err: err}
 	}
+}
+
+func (m Model) prewarmAllToolsCmd(dirPath string, tools []string) tea.Cmd {
+	if m.sessions == nil {
+		return nil
+	}
+	cmds := make([]tea.Cmd, 0, len(tools))
+	for _, tool := range tools {
+		tool := tool
+		spec := core.SessionSpec{DirPath: dirPath, Tool: tool, Detach: true}
+		cmds = append(cmds, func() tea.Msg {
+			created, err := m.sessions.PrewarmSession(spec)
+			if err != nil {
+				return core.MsgToolPrewarmFailed{Tool: tool, Err: err}
+			}
+			if created {
+				return core.MsgToolPrewarmStarted{Tool: tool, StartedAt: time.Now()}
+			}
+			return core.MsgToolPrewarmExisting{Tool: tool}
+		})
+	}
+	if len(cmds) == 0 {
+		return nil
+	}
+	return tea.Batch(cmds...)
+}
+
+const toolReadyDelay = 7 * time.Second
+
+func (m Model) checkToolReadyCmd(spec core.SessionSpec) tea.Cmd {
+	if m.core.ToolWarmStart != nil {
+		if start, ok := m.core.ToolWarmStart[spec.Tool]; ok {
+			if start.IsZero() {
+				return func() tea.Msg {
+					return core.MsgToolDelayElapsed{Tool: spec.Tool}
+				}
+			}
+			remaining := toolReadyDelay - time.Since(start)
+			if remaining <= 0 {
+				return func() tea.Msg {
+					return core.MsgToolDelayElapsed{Tool: spec.Tool}
+				}
+			}
+			return tea.Tick(remaining, func(time.Time) tea.Msg {
+				return core.MsgToolDelayElapsed{Tool: spec.Tool}
+			})
+		}
+	}
+	return tea.Tick(toolReadyDelay, func(time.Time) tea.Msg {
+		return core.MsgToolDelayElapsed{Tool: spec.Tool}
+	})
 }
