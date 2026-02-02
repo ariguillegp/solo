@@ -415,7 +415,7 @@ func (m Model) prewarmAllToolsCmd(dirPath string, tools []string) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-const toolReadyDelay = 5 * time.Second
+const toolReadyDelay = 7 * time.Second
 
 func (m Model) checkToolReadyCmd(spec core.SessionSpec) tea.Cmd {
 	if m.core.ToolWarmStart != nil {
