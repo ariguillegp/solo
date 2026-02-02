@@ -28,7 +28,7 @@ go install github.com/ariguillegp/solo/cmd/solo@latest
 
 ### Recommended way
 
-Create keybindings to run this tool from your regular shell environment and from inside a tmux session
+Create keybindings to run this tool from your regular shell environment and from inside a tmux session. Chances are you are not using `~/Work/tries/` as your base directory for your projects so instead of just using `solo` update the following settings to run `solo YOUR_BASE_DIR`:
 
 **Bash**
 
@@ -37,6 +37,16 @@ Add the following line to your `~/.bashrc`
 ```bash
 bind -x '"\C-f": "solo"'
 ```
+
+**tmux**
+
+Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `solo` from a tmux session
+
+```tmux
+bind-key f run-shell "tmux has-session -t solo-launcher 2>/dev/null && tmux kill-session -t solo-launcher; tmux new-session -d -s solo-launcher 'bash -lc \"solo\"'; tmux switch-client -t solo-launcher"
+```
+
+This launches solo in a temporary tmux session to keep your current session clean.
 
 **Zsh**
 
@@ -48,10 +58,10 @@ bindkey -s '^f' 'solo\n'
 
 **tmux**
 
-Add the following line to your `~/.tmux.conf`
+Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `solo` from a tmux session
 
 ```tmux
-bind-key f run-shell "tmux has-session -t solo-launcher 2>/dev/null && tmux kill-session -t solo-launcher; tmux new-session -d -s solo-launcher 'bash -lc \"solo\"'; tmux switch-client -t solo-launcher"
+bind-key f run-shell "tmux has-session -t solo-launcher 2>/dev/null && tmux kill-session -t solo-launcher; tmux new-session -d -s solo-launcher 'zsh -lc \"solo\"'; tmux switch-client -t solo-launcher"
 ```
 
 This launches solo in a temporary tmux session to keep your current session clean.
@@ -99,7 +109,7 @@ selected theme updates UI colors across the app.
 
 ### Project Layout
 
-Solo expects a project container that holds one worktree per directory:
+Solo expects a project container that holds one worktree per directory in a setup exactly like this:
 
 ```
 my-project/
