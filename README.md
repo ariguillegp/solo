@@ -115,56 +115,6 @@ separate directory. The `main` worktree is created without an initial commit.
 Stale worktree references (from manually deleted directories) are automatically
 pruned whenever the worktree list is loaded, keeping the list accurate.
 
-### Keybinding Examples
-
-Optional bindings to launch `solo` quickly:
-
-
-### Workflow
-
-1. Launch solo and type to fuzzy-filter project containers
-2. Press `enter` to select a project (or create a new one)
-3. Choose an existing worktree or type a branch name to create a new one
-4. Select a tool (`opencode` or `amp`) to start the session
-
-The fuzzy suggestion list shows up to five items at once and displays scroll
-indicators when more suggestions are available.
-
-### Keybindings
-
-#### Project Selection
-
-| Key | Action |
-|-----|--------|
-| `↑` / `ctrl+k` | Previous suggestion |
-| `↓` / `ctrl+j` | Next suggestion |
-| `enter` | Select project (go to worktree selection) |
-| `ctrl+t` | Open theme picker |
-| `esc` / `ctrl+c` | Quit |
-
-#### Worktree Selection
-
-| Key | Action |
-|-----|--------|
-| `↑` / `ctrl+k` | Previous worktree |
-| `↓` / `ctrl+j` | Next worktree |
-| `enter` | Select worktree / create new if typing |
-| `ctrl+d` | Delete selected worktree (with confirmation) |
-| `ctrl+t` | Open theme picker |
-| `esc` | Go back to project selection |
-| `ctrl+c` | Quit |
-
-#### Tool Selection
-
-| Key | Action |
-|-----|--------|
-| `↑` / `ctrl+k` | Previous tool |
-| `↓` / `ctrl+j` | Next tool |
-| `enter` | Start session |
-| `ctrl+t` | Open theme picker |
-| `esc` | Back to worktree selection |
-| `ctrl+c` | Quit |
-
 ## License
 
 MIT
