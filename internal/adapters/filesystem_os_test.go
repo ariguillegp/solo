@@ -169,6 +169,27 @@ func TestCreateProjectCreatesGitRepo(t *testing.T) {
 	}
 }
 
+func TestDeleteProjectRemovesRootAndWorktrees(t *testing.T) {
+	projectPath := t.TempDir()
+	initRepo(t, projectPath)
+
+	fs := &OSFilesystem{}
+	worktreePath, err := fs.CreateWorktree(projectPath, "feature/delete-project")
+	if err != nil {
+		t.Fatalf("unexpected error creating worktree: %v", err)
+	}
+
+	if err := fs.DeleteProject(projectPath); err != nil {
+		t.Fatalf("unexpected error deleting project: %v", err)
+	}
+	if _, err := os.Stat(projectPath); !os.IsNotExist(err) {
+		t.Fatalf("expected project path to be removed")
+	}
+	if _, err := os.Stat(worktreePath); !os.IsNotExist(err) {
+		t.Fatalf("expected worktree path to be removed")
+	}
+}
+
 func TestScanDirsFindsGitProjects(t *testing.T) {
 	root := t.TempDir()
 	projectPath := filepath.Join(root, "repo")

@@ -39,6 +39,24 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		m.ProjectWarning = ""
 		return m, []Effect{EffLoadWorktrees{ProjectPath: msg.ProjectPath}}
 
+	case MsgProjectDeleted:
+		if msg.Err != nil {
+			m.Mode = ModeError
+			m.Err = msg.Err
+			return m, nil
+		}
+		m.Mode = ModeBrowsing
+		m.ProjectDeletePath = ""
+		m.SelectedProject = ""
+		m.WorktreeQuery = ""
+		m.Worktrees = nil
+		m.FilteredWT = nil
+		m.WorktreeIdx = 0
+		m.ProjectWarning = ""
+		m.SelectedWorktreePath = ""
+		m.WorktreeDeletePath = ""
+		return m, []Effect{EffScanDirs{Roots: m.RootPaths}}
+
 	case MsgWorktreesLoaded:
 		if msg.Err != nil {
 			m.Mode = ModeError
@@ -143,6 +161,8 @@ func handleKey(m Model, key string) (Model, []Effect, bool) {
 	switch m.Mode {
 	case ModeBrowsing:
 		return handleBrowsingKey(m, key)
+	case ModeProjectDeleteConfirm:
+		return handleProjectDeleteConfirmKey(m, key)
 	case ModeWorktree:
 		return handleWorktreeKey(m, key)
 	case ModeWorktreeDeleteConfirm:
@@ -183,7 +203,32 @@ func handleBrowsingKey(m Model, key string) (Model, []Effect, bool) {
 			return m, []Effect{EffCreateProject{Path: path}}, true
 		}
 		return m, nil, true
+	case "ctrl+d":
+		if dir, ok := m.SelectedDir(); ok {
+			m.Mode = ModeProjectDeleteConfirm
+			m.ProjectDeletePath = dir.Path
+			return m, nil, true
+		}
+		return m, nil, true
 	case "esc", "ctrl+c":
+		return m, []Effect{EffQuit{}}, true
+	}
+	return m, nil, false
+}
+
+func handleProjectDeleteConfirmKey(m Model, key string) (Model, []Effect, bool) {
+	switch key {
+	case "enter":
+		if m.ProjectDeletePath != "" {
+			return m, []Effect{EffDeleteProject{ProjectPath: m.ProjectDeletePath}}, true
+		}
+		m.Mode = ModeBrowsing
+		return m, nil, true
+	case "esc":
+		m.Mode = ModeBrowsing
+		m.ProjectDeletePath = ""
+		return m, nil, true
+	case "ctrl+c":
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false

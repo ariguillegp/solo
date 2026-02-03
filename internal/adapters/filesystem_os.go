@@ -122,6 +122,53 @@ func (f *OSFilesystem) CreateProject(path string) (string, error) {
 	return projectPath, nil
 }
 
+func (f *OSFilesystem) DeleteProject(projectPath string) error {
+	projectPath = expandPath(projectPath)
+	if !hasGitMarker(projectPath) {
+		return fmt.Errorf("Project has no repository. Create a project first.")
+	}
+
+	worktreePaths, err := listWorktreePaths(projectPath)
+	if err != nil {
+		return err
+	}
+
+	projectClean := filepath.Clean(projectPath)
+	for _, wtPath := range worktreePaths {
+		cleanPath := filepath.Clean(wtPath)
+		if cleanPath == filepath.Clean(projectPath) {
+			continue
+		}
+		cmd := gitCommand(projectPath, "worktree", "remove", "--force", cleanPath)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("%s: %s", err, string(output))
+		}
+	}
+
+	if err := os.RemoveAll(projectClean); err != nil {
+		return err
+	}
+	return nil
+}
+
+func listWorktreePaths(projectPath string) ([]string, error) {
+	cmd := gitCommand(projectPath, "worktree", "list", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var paths []string
+	for _, line := range bytes.Split(output, []byte("\n")) {
+		lineStr := string(line)
+		if strings.HasPrefix(lineStr, "worktree ") {
+			paths = append(paths, strings.TrimPrefix(lineStr, "worktree "))
+		}
+	}
+	return paths, nil
+}
+
 func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, error) {
 	projectPath = expandPath(projectPath)
 	if !hasGitMarker(projectPath) {

@@ -127,6 +127,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input.Blur()
 			m.worktreeInput.Focus()
 		}
+		if prevMode == core.ModeBrowsing && m.core.Mode == core.ModeProjectDeleteConfirm {
+			m.input.Blur()
+		}
 		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeBrowsing {
 			m.worktreeInput.SetValue("")
 			m.worktreeInput.Blur()
@@ -153,6 +156,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if prevMode == core.ModeWorktreeDeleteConfirm && m.core.Mode == core.ModeWorktree {
 			m.worktreeInput.Focus()
+		}
+		if prevMode == core.ModeProjectDeleteConfirm && m.core.Mode == core.ModeBrowsing {
+			m.input.Focus()
 		}
 
 		if !handled {
@@ -204,6 +210,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.SelectedSpec = spec
 		}
 		m.worktreeInput.Focus()
+		cmd := m.runEffects(effects)
+		return m, cmd
+
+	case projectDeletedMsg:
+		coreModel, effects := core.Update(m.core, core.MsgProjectDeleted{
+			ProjectPath: msg.projectPath,
+			Err:         msg.err,
+		})
+		m.core = coreModel
+		if spec := extractSessionSpec(effects); spec != nil {
+			m.SelectedSpec = spec
+		}
+		if m.core.Mode == core.ModeBrowsing {
+			m.input.Focus()
+		}
 		cmd := m.runEffects(effects)
 		return m, cmd
 
@@ -297,6 +318,11 @@ type projectCreatedMsg struct {
 	err         error
 }
 
+type projectDeletedMsg struct {
+	projectPath string
+	err         error
+}
+
 type worktreesLoadedMsg struct {
 	worktrees []core.Worktree
 	warning   string
@@ -322,6 +348,8 @@ func (m Model) runEffects(effects []core.Effect) tea.Cmd {
 			cmds = append(cmds, m.scanDirsCmd(e.Roots))
 		case core.EffCreateProject:
 			cmds = append(cmds, m.createProjectCmd(e.Path))
+		case core.EffDeleteProject:
+			cmds = append(cmds, m.deleteProjectCmd(e.ProjectPath))
 		case core.EffLoadWorktrees:
 			cmds = append(cmds, m.loadWorktreesCmd(e.ProjectPath))
 		case core.EffCreateWorktree:
@@ -366,6 +394,13 @@ func (m Model) createProjectCmd(path string) tea.Cmd {
 	return func() tea.Msg {
 		projectPath, err := m.fs.CreateProject(path)
 		return projectCreatedMsg{projectPath: projectPath, err: err}
+	}
+}
+
+func (m Model) deleteProjectCmd(projectPath string) tea.Cmd {
+	return func() tea.Msg {
+		err := m.fs.DeleteProject(projectPath)
+		return projectDeletedMsg{projectPath: projectPath, err: err}
 	}
 }
 

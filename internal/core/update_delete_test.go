@@ -27,6 +27,30 @@ func TestWorktreeDeleteKeyEntersConfirm(t *testing.T) {
 	}
 }
 
+func TestProjectDeleteKeyEntersConfirm(t *testing.T) {
+	m := Model{
+		Mode: ModeBrowsing,
+		Filtered: []DirEntry{
+			{Path: "/projects/demo", Name: "demo", Exists: true},
+		},
+		SelectedIdx: 0,
+	}
+
+	updated, effects, handled := UpdateKey(m, "ctrl+d")
+	if !handled {
+		t.Fatal("expected ctrl+d to be handled")
+	}
+	if updated.Mode != ModeProjectDeleteConfirm {
+		t.Fatalf("expected delete confirm mode, got %v", updated.Mode)
+	}
+	if updated.ProjectDeletePath != "/projects/demo" {
+		t.Fatalf("expected delete path to be set, got %q", updated.ProjectDeletePath)
+	}
+	if len(effects) != 0 {
+		t.Fatalf("expected no effects, got %d", len(effects))
+	}
+}
+
 func TestWorktreeDeleteKeyWithNoSelectionNoop(t *testing.T) {
 	m := Model{Mode: ModeWorktree}
 
@@ -71,6 +95,31 @@ func TestWorktreeDeleteConfirmEnterEmitsEffect(t *testing.T) {
 	}
 }
 
+func TestProjectDeleteConfirmEnterEmitsEffect(t *testing.T) {
+	m := Model{
+		Mode:              ModeProjectDeleteConfirm,
+		ProjectDeletePath: "/projects/demo",
+	}
+
+	updated, effects, handled := UpdateKey(m, "enter")
+	if !handled {
+		t.Fatal("expected enter to be handled")
+	}
+	if updated.Mode != ModeProjectDeleteConfirm {
+		t.Fatalf("expected to stay in confirm mode, got %v", updated.Mode)
+	}
+	if len(effects) != 1 {
+		t.Fatalf("expected one effect, got %d", len(effects))
+	}
+	eff, ok := effects[0].(EffDeleteProject)
+	if !ok {
+		t.Fatalf("expected EffDeleteProject, got %T", effects[0])
+	}
+	if eff.ProjectPath != "/projects/demo" {
+		t.Fatalf("unexpected effect payload: %+v", eff)
+	}
+}
+
 func TestWorktreeDeleteConfirmEscCancels(t *testing.T) {
 	m := Model{
 		Mode:               ModeWorktreeDeleteConfirm,
@@ -86,6 +135,27 @@ func TestWorktreeDeleteConfirmEscCancels(t *testing.T) {
 	}
 	if updated.WorktreeDeletePath != "" {
 		t.Fatalf("expected delete path to be cleared, got %q", updated.WorktreeDeletePath)
+	}
+	if len(effects) != 0 {
+		t.Fatalf("expected no effects, got %d", len(effects))
+	}
+}
+
+func TestProjectDeleteConfirmEscCancels(t *testing.T) {
+	m := Model{
+		Mode:              ModeProjectDeleteConfirm,
+		ProjectDeletePath: "/projects/demo",
+	}
+
+	updated, effects, handled := UpdateKey(m, "esc")
+	if !handled {
+		t.Fatal("expected esc to be handled")
+	}
+	if updated.Mode != ModeBrowsing {
+		t.Fatalf("expected to return to browsing mode, got %v", updated.Mode)
+	}
+	if updated.ProjectDeletePath != "" {
+		t.Fatalf("expected delete path to be cleared, got %q", updated.ProjectDeletePath)
 	}
 	if len(effects) != 0 {
 		t.Fatalf("expected no effects, got %d", len(effects))
@@ -126,6 +196,28 @@ func TestMsgWorktreeDeletedReloadsWorktrees(t *testing.T) {
 	}
 	if eff.ProjectPath != "/projects/demo" {
 		t.Fatalf("unexpected project path: %q", eff.ProjectPath)
+	}
+}
+
+func TestMsgProjectDeletedReloadsProjects(t *testing.T) {
+	base := Model{RootPaths: []string{"/projects"}, Mode: ModeProjectDeleteConfirm}
+
+	updated, effects := Update(base, MsgProjectDeleted{ProjectPath: "/projects/demo"})
+	if updated.Mode != ModeBrowsing {
+		t.Fatalf("expected browsing mode, got %v", updated.Mode)
+	}
+	if updated.ProjectDeletePath != "" {
+		t.Fatalf("expected delete path to be cleared, got %q", updated.ProjectDeletePath)
+	}
+	if len(effects) != 1 {
+		t.Fatalf("expected one effect, got %d", len(effects))
+	}
+	eff, ok := effects[0].(EffScanDirs)
+	if !ok {
+		t.Fatalf("expected EffScanDirs, got %T", effects[0])
+	}
+	if len(eff.Roots) != 1 || eff.Roots[0] != "/projects" {
+		t.Fatalf("unexpected roots: %v", eff.Roots)
 	}
 }
 

@@ -11,6 +11,7 @@ type Mode int
 const (
 	ModeLoading Mode = iota
 	ModeBrowsing
+	ModeProjectDeleteConfirm
 	ModeWorktree
 	ModeWorktreeDeleteConfirm
 	ModeTool
@@ -29,6 +30,7 @@ type Model struct {
 	SelectedProject      string
 	SelectedWorktreePath string
 	WorktreeDeletePath   string
+	ProjectDeletePath    string
 	ProjectWarning       string
 	Worktrees            []Worktree
 	FilteredWT           []Worktree
