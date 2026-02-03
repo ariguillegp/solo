@@ -137,7 +137,7 @@ func (m Model) View() string {
 		if len(m.core.FilteredWT) > 0 {
 			lines := make([]string, 0, len(m.core.FilteredWT))
 			for _, wt := range m.core.FilteredWT {
-				lines = append(lines, wt.Path)
+				lines = append(lines, fmt.Sprintf("%s [%s]", wt.Name, wt.Branch))
 			}
 			if createLabel != "" {
 				lines = append(lines, createLabel)
