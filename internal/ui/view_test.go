@@ -82,7 +82,7 @@ func TestViewWorktreeSuggestionAndNav(t *testing.T) {
 	if !strings.Contains(view, "Select worktree or create new branch") {
 		t.Fatalf("expected worktree prompt, got %q", view)
 	}
-	if !strings.Contains(view, "/repo/feat") {
+	if !strings.Contains(view, "feat [feat]") {
 		t.Fatalf("expected selected worktree suggestion, got %q", view)
 	}
 }
