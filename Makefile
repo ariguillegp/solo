@@ -6,8 +6,10 @@ validate:
 	go test ./...
 
 deploy:
-	install -d ~/.local/bin
+	mkdir -p ~/.local/bin
 	go build -o ~/.local/bin/solo ./cmd/solo
 
 install:
-	./scripts/install.sh
+	mkdir -p ~/Projects
+	mkdir -p ~/.solo/worktrees
+	$(MAKE) deploy
