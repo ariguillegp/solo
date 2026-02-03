@@ -50,6 +50,22 @@ func (t *TmuxSession) PrewarmSession(spec core.SessionSpec) (bool, error) {
 	return ensureSession(sessionName, spec.DirPath, spec.Tool)
 }
 
+func (t *TmuxSession) KillSession(spec core.SessionSpec) error {
+	sessionName, err := sessionNameFor(spec)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("tmux", "kill-session", "-t", tmuxSessionTarget(sessionName))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(output), "can't find session") {
+			return nil
+		}
+		return fmt.Errorf("failed to kill tmux session: %w (output: %s)", err, string(output))
+	}
+	return nil
+}
+
 var sessionNamePattern = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
 
 func sanitizeSessionPart(name, fallback string) string {

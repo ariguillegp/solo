@@ -112,8 +112,17 @@ func (m Model) View() string {
 			content = input
 		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
-			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+t", "theme"}, {"esc", "quit"},
+			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+t", "theme"}, {"esc", "quit"},
 		})
+
+	case core.ModeProjectDeleteConfirm:
+		header = m.styles.DestructiveTitle.Render("⚠ Delete Project")
+		prompt := m.styles.DestructiveText.Render("This will delete the project and all worktrees:")
+		path := m.styles.DestructiveText.Render("  " + m.core.ProjectDeletePath)
+		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
+		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
+		content = prompt + "\n\n" + path + "\n\n" + warning + "\n\n" + actions
+		helpLine = ""
 
 	case core.ModeWorktree:
 		header = m.styles.Title.Render("Step 2: Select Worktree")

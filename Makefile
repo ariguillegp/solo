@@ -1,4 +1,4 @@
-.PHONY: validate deploy
+.PHONY: validate deploy install
 
 validate:
 	gofmt -w ./cmd ./internal
@@ -6,5 +6,10 @@ validate:
 	go test ./...
 
 deploy:
-	install -d ~/.local/bin
+	mkdir -p ~/.local/bin
 	go build -o ~/.local/bin/solo ./cmd/solo
+
+install:
+	mkdir -p ~/Projects
+	mkdir -p ~/.solo/worktrees
+	$(MAKE) deploy

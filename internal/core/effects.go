@@ -16,6 +16,12 @@ type EffCreateProject struct {
 
 func (EffCreateProject) isEffect() {}
 
+type EffDeleteProject struct {
+	ProjectPath string
+}
+
+func (EffDeleteProject) isEffect() {}
+
 type EffOpenSession struct {
 	Spec SessionSpec
 }

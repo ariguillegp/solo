@@ -2,13 +2,27 @@
 
 A lightweight TUI to manage your fleet of agents across all your projects.
 
-https://github.com/user-attachments/assets/be955ba5-ba2e-4ff0-9047-e9b610c39c34
+## Run agent tool in worktree (session caching)
+After selecting a project/worktree tuple, the program automatically opens new sessions for every available tool to make the bootstrapping process faster
+
+https://github.com/user-attachments/assets/5d8f25d3-4344-4801-ab51-fb3d00b22c23
+
+## Create/Delete worktree
+Deleting a worktree also kills any session using it.
+
+https://github.com/user-attachments/assets/1d38e6ff-1a80-4322-802b-6f117ae1a05f
+
+## Create/Delete project
+Deleting a project also kills any sessions using it.
+
+https://github.com/user-attachments/assets/4d98a9ac-4e05-4ca3-857e-e670c1a9d65a
 
 ## Features
 
 - Fuzzy search across project containers and git worktrees
 - Launch tmux sessions running `opencode` or `amp`
 - Keyboard-driven navigation
+- Delete entire projects (including all worktrees) with confirmation
 - Theme picker to customize the UI
 - Help bar at the bottom for better discoverability
 
@@ -21,21 +35,23 @@ https://github.com/user-attachments/assets/be955ba5-ba2e-4ff0-9047-e9b610c39c34
 ## Installation
 
 ```bash
-go install github.com/ariguillegp/solo/cmd/solo@latest
+$ git clone git@github.com:ariguillegp/solo.git
+$ cd solo
+$ make install
 ```
 
 ## Usage
 
 ### Recommended way
 
-Create keybindings to run this tool from your regular shell environment and from inside a tmux session. Chances are you are not using `~/Work/tries/` as your base directory for your projects so instead of just using `solo` update the following settings to run `solo YOUR_BASE_DIR`:
+Create keybindings to run this tool from your regular shell environment and from inside tmux sessions. If are you are not using `~/Projects/` as your base directory for your project repositories, you will need to run `solo YOUR_BASE_DIR` to find out the repos you wanna work on.
 
 **Bash**
 
 Add the following line to your `~/.bashrc`
 
 ```bash
-bind -x '"\C-f": "solo"'
+bind -x '"\C-f": "solo YOUR_BASE_DIR"'
 ```
 
 **tmux**
@@ -43,7 +59,7 @@ bind -x '"\C-f": "solo"'
 Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `solo` from a tmux session
 
 ```tmux
-bind-key f run-shell "tmux has-session -t solo-launcher 2>/dev/null && tmux kill-session -t solo-launcher; tmux new-session -d -s solo-launcher 'bash -lc \"solo\"'; tmux switch-client -t solo-launcher"
+bind-key f run-shell "tmux has-session -t solo-launcher 2>/dev/null && tmux kill-session -t solo-launcher; tmux new-session -d -s solo-launcher 'bash -lc \"solo YOUR_BASE_DIR\"'; tmux switch-client -t solo-launcher"
 ```
 
 This launches solo in a temporary tmux session to keep your current session clean.
@@ -53,7 +69,7 @@ This launches solo in a temporary tmux session to keep your current session clea
 Add the following line to your `~/.zshrc`
 
 ```bash
-bindkey -s '^f' 'solo\n'
+bindkey -s '^f' 'solo YOUR_BASE_DIR\n'
 ```
 
 **tmux**
@@ -61,7 +77,7 @@ bindkey -s '^f' 'solo\n'
 Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `solo` from a tmux session
 
 ```tmux
-bind-key f run-shell "tmux has-session -t solo-launcher 2>/dev/null && tmux kill-session -t solo-launcher; tmux new-session -d -s solo-launcher 'zsh -lc \"solo\"'; tmux switch-client -t solo-launcher"
+bind-key f run-shell "tmux has-session -t solo-launcher 2>/dev/null && tmux kill-session -t solo-launcher; tmux new-session -d -s solo-launcher 'zsh -lc \"solo YOUR_BASE_DIR\"'; tmux switch-client -t solo-launcher"
 ```
 
 This launches solo in a temporary tmux session to keep your current session clean.
@@ -81,9 +97,6 @@ By default, solo scans `~/Projects` (personal preference). Pass custom directori
 solo ~/projects ~/work
 ```
 
-Solo scans up to two directory levels under each root and skips hidden or ignored
-directories (like `.git`, `.bare`, `node_modules`, and `vendor`).
-
 ### Non-Interactive Launch
 
 Open a session directly without the UI:
@@ -91,10 +104,6 @@ Open a session directly without the UI:
 ```bash
 solo --project my-project --worktree main --tool opencode [--detach]
 ```
-
-`--project` can be a container name or a path (absolute or relative). `--worktree` can be
-an existing worktree path (which must already exist) or a branch name; if a named worktree
-does not exist, solo creates it.
 
 Create a new project non-interactively:
 
@@ -109,18 +118,7 @@ selected theme updates UI colors across the app.
 
 ### Project Layout
 
-Solo expects a project container that holds one worktree per directory in a setup exactly like this:
-
-```
-my-project/
-  .bare/
-  main/
-  feat-login/
-  fix-bug/
-```
-
-The project directory itself stores a bare repo in `.bare`, while each worktree is a
-separate directory. The `main` worktree is created without an initial commit.
+Solo expects projects to be valid git repositories, which by default will be found under `~/Projects` and additional worktrees will be created under `~/.solo/worktrees/`
 
 Stale worktree references (from manually deleted directories) are automatically
 pruned whenever the worktree list is loaded, keeping the list accurate.

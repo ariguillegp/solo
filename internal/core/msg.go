@@ -20,6 +20,13 @@ type MsgProjectCreated struct {
 
 func (MsgProjectCreated) isMsg() {}
 
+type MsgProjectDeleted struct {
+	ProjectPath string
+	Err         error
+}
+
+func (MsgProjectDeleted) isMsg() {}
+
 type MsgKeyPress struct {
 	Key string
 }
