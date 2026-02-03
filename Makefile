@@ -1,4 +1,4 @@
-.PHONY: validate deploy
+.PHONY: validate deploy install
 
 validate:
 	gofmt -w ./cmd ./internal
@@ -8,3 +8,6 @@ validate:
 deploy:
 	install -d ~/.local/bin
 	go build -o ~/.local/bin/solo ./cmd/solo
+
+install:
+	./scripts/install.sh

@@ -185,14 +185,18 @@ func resolveWorktreePath(fs ports.Filesystem, projectPath, worktree string) (str
 		return "", fmt.Errorf("worktree not found: %s", worktree)
 	}
 
-	candidate := filepath.Join(projectPath, worktree)
-	if exists(candidate) {
-		return candidate, nil
+	listing, err := fs.ListWorktrees(projectPath)
+	if err != nil {
+		return "", err
+	}
+	if listing.Warning != "" {
+		return "", fmt.Errorf("%s", listing.Warning)
 	}
 
-	sanitized := filepath.Join(projectPath, core.SanitizeWorktreeName(worktree))
-	if exists(sanitized) {
-		return sanitized, nil
+	for _, wt := range listing.Worktrees {
+		if wt.Branch == worktree || wt.Name == worktree {
+			return wt.Path, nil
+		}
 	}
 
 	return fs.CreateWorktree(projectPath, worktree)
