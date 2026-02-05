@@ -58,7 +58,8 @@ func (t *TmuxSession) KillSession(spec core.SessionSpec) error {
 
 	cmd := exec.Command("tmux", "kill-session", "-t", tmuxSessionTarget(sessionName))
 	if output, err := cmd.CombinedOutput(); err != nil {
-		if strings.Contains(string(output), "can't find session") {
+		if strings.Contains(string(output), "can't find session") ||
+			strings.Contains(string(output), "no server running") {
 			return nil
 		}
 		return fmt.Errorf("failed to kill tmux session: %w (output: %s)", err, string(output))
