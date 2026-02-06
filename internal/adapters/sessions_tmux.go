@@ -66,6 +66,66 @@ func (t *TmuxSession) KillSession(spec core.SessionSpec) error {
 	return nil
 }
 
+func (t *TmuxSession) ListSessions() ([]core.SessionInfo, error) {
+	cmd := exec.Command("tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tmux sessions: %w", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 1 && strings.TrimSpace(lines[0]) == "" {
+		return nil, nil
+	}
+
+	var sessions []core.SessionInfo
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		name := strings.TrimSpace(parts[0])
+		if name == "" {
+			continue
+		}
+		if name == "solo-launcher" {
+			continue
+		}
+		sessionPath := ""
+		if len(parts) > 1 {
+			sessionPath = strings.TrimSpace(parts[1])
+		}
+		info, ok := parseSessionName(name)
+		if ok {
+			info.Name = name
+			if sessionPath != "" {
+				info.DirPath = sessionPath
+			}
+		} else {
+			info = core.SessionInfo{Name: name, DirPath: sessionPath}
+		}
+		sessions = append(sessions, info)
+	}
+
+	return sessions, nil
+}
+
+func (t *TmuxSession) AttachSession(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("session name is required")
+	}
+	if os.Getenv("TMUX") != "" {
+		return switchClient(name)
+	}
+	cmd := exec.Command("tmux", "attach-session", "-t", tmuxSessionTarget(name))
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 var sessionNamePattern = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
 
 func sanitizeSessionPart(name, fallback string) string {
@@ -183,4 +243,22 @@ func tmuxEnvArgs(tool string) []string {
 	}
 
 	return args
+}
+
+func parseSessionName(name string) (core.SessionInfo, bool) {
+	const separator = "__"
+	parts := strings.Split(name, separator)
+	if len(parts) < 2 {
+		return core.SessionInfo{}, false
+	}
+	tool := strings.TrimSpace(parts[len(parts)-1])
+	if !core.IsSupportedTool(tool) {
+		return core.SessionInfo{}, false
+	}
+	pathPart := strings.Join(parts[:len(parts)-1], separator)
+	pathPart = strings.TrimSpace(pathPart)
+	if pathPart == "" {
+		return core.SessionInfo{}, false
+	}
+	return core.SessionInfo{Name: name, DirPath: pathPart, Tool: tool}, true
 }

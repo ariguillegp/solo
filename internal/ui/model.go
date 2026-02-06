@@ -1,34 +1,37 @@
 package ui
 
 import (
+	"errors"
 	"time"
 
+	"github.com/ariguillegp/solo/internal/core"
+
+	"github.com/ariguillegp/solo/internal/ports"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/ariguillegp/solo/internal/core"
-	"github.com/ariguillegp/solo/internal/ports"
 )
 
 type Model struct {
-	core            core.Model
-	input           textinput.Model
-	worktreeInput   textinput.Model
-	toolInput       textinput.Model
-	spinner         spinner.Model
-	fs              ports.Filesystem
-	sessions        ports.SessionManager
-	maxDepth        int
-	width           int
-	height          int
-	SelectedSpec    *core.SessionSpec
-	themeIdx        int
-	themes          []Theme
-	styles          Styles
-	showThemePicker bool
-	prevThemeIdx    int
-	prevStyles      Styles
+	core                core.Model
+	input               textinput.Model
+	worktreeInput       textinput.Model
+	toolInput           textinput.Model
+	sessionInput        textinput.Model
+	spinner             spinner.Model
+	fs                  ports.Filesystem
+	sessions            ports.SessionManager
+	maxDepth            int
+	width               int
+	height              int
+	SelectedSpec        *core.SessionSpec
+	SelectedSessionName string
+	themeIdx            int
+	themes              []Theme
+	styles              Styles
+	showThemePicker     bool
+	prevThemeIdx        int
+	prevStyles          Styles
 }
 
 func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Model {
@@ -40,6 +43,8 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	wti.Prompt = ""
 	tti := textinput.New()
 	tti.Prompt = ""
+	sti := textinput.New()
+	sti.Prompt = ""
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -50,6 +55,7 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		input:         ti,
 		worktreeInput: wti,
 		toolInput:     tti,
+		sessionInput:  sti,
 		spinner:       sp,
 		fs:            fs,
 		sessions:      sessions,
@@ -149,6 +155,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeWorktreeDeleteConfirm {
 			m.worktreeInput.Blur()
 		}
+		if prevMode != core.ModeSessions && m.core.Mode == core.ModeSessions {
+			m.input.Blur()
+			m.worktreeInput.Blur()
+			m.toolInput.Blur()
+			m.sessionInput.SetValue("")
+			m.sessionInput.Focus()
+		}
+		if prevMode == core.ModeSessions && m.core.Mode != core.ModeSessions {
+			m.sessionInput.SetValue("")
+			m.sessionInput.Blur()
+			if m.core.Mode == core.ModeBrowsing {
+				m.input.Focus()
+			}
+			if m.core.Mode == core.ModeWorktree {
+				m.worktreeInput.Focus()
+			}
+			if m.core.Mode == core.ModeTool {
+				m.toolInput.Focus()
+			}
+		}
 		if prevMode == core.ModeTool && m.core.Mode == core.ModeWorktree {
 			m.toolInput.SetValue("")
 			m.toolInput.Blur()
@@ -183,6 +209,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 
 				coreModel, effects := core.Update(m.core, core.MsgToolQueryChanged{Query: m.toolInput.Value()})
+				m.core = coreModel
+				cmds = append(cmds, m.runEffects(effects))
+			case core.ModeSessions:
+				m.sessionInput, cmd = m.sessionInput.Update(msg)
+				cmds = append(cmds, cmd)
+
+				coreModel, effects := core.Update(m.core, core.MsgSessionQueryChanged{Query: m.sessionInput.Value()})
 				m.core = coreModel
 				cmds = append(cmds, m.runEffects(effects))
 			}
@@ -303,6 +336,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmd := m.runEffects(effects)
 		return m, cmd
+
+	case sessionsLoadedMsg:
+		coreModel, effects := core.Update(m.core, core.MsgSessionsLoaded{
+			Sessions: msg.sessions,
+			Err:      msg.err,
+		})
+		m.core = coreModel
+		cmd := m.runEffects(effects)
+		return m, cmd
+
+	case sessionAttachedMsg:
+		if msg.err == nil {
+			m.SelectedSpec = nil
+			m.SelectedSessionName = msg.session.Name
+			return m, tea.Quit
+		}
+		m.core.Mode = core.ModeError
+		m.core.Err = msg.err
+		return m, nil
 	}
 
 	return m, nil
@@ -339,6 +391,18 @@ type worktreeDeletedMsg struct {
 	err  error
 }
 
+type sessionsLoadedMsg struct {
+	sessions []core.SessionInfo
+	err      error
+}
+
+type sessionAttachedMsg struct {
+	session core.SessionInfo
+	err     error
+}
+
+var errNoSessions = errors.New("session manager not configured")
+
 func (m Model) runEffects(effects []core.Effect) tea.Cmd {
 	var cmds []tea.Cmd
 
@@ -360,6 +424,10 @@ func (m Model) runEffects(effects []core.Effect) tea.Cmd {
 			cmds = append(cmds, m.prewarmAllToolsCmd(e.DirPath, e.Tools))
 		case core.EffCheckToolReady:
 			cmds = append(cmds, m.checkToolReadyCmd(e.Spec))
+		case core.EffListSessions:
+			cmds = append(cmds, m.listSessionsCmd())
+		case core.EffAttachSession:
+			cmds = append(cmds, m.attachSessionCmd(e.Session))
 		case core.EffOpenSession:
 			cmds = append(cmds, tea.Quit)
 		case core.EffQuit:
@@ -472,6 +540,25 @@ func (m Model) prewarmAllToolsCmd(dirPath string, tools []string) tea.Cmd {
 		return nil
 	}
 	return tea.Batch(cmds...)
+}
+
+func (m Model) listSessionsCmd() tea.Cmd {
+	return func() tea.Msg {
+		if m.sessions == nil {
+			return sessionsLoadedMsg{}
+		}
+		sessions, err := m.sessions.ListSessions()
+		return sessionsLoadedMsg{sessions: sessions, err: err}
+	}
+}
+
+func (m Model) attachSessionCmd(session core.SessionInfo) tea.Cmd {
+	return func() tea.Msg {
+		if m.sessions == nil {
+			return sessionAttachedMsg{err: errNoSessions}
+		}
+		return sessionAttachedMsg{session: session}
+	}
 }
 
 const toolReadyDelay = 7 * time.Second

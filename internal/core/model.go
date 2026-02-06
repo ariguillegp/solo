@@ -16,6 +16,7 @@ const (
 	ModeWorktreeDeleteConfirm
 	ModeTool
 	ModeToolStarting
+	ModeSessions
 	ModeError
 )
 
@@ -44,6 +45,11 @@ type Model struct {
 	ToolErrors           map[string]string
 	ToolError            string
 	PendingSpec          *SessionSpec
+	SessionReturnMode    Mode
+	Sessions             []SessionInfo
+	FilteredSessions     []SessionInfo
+	SessionQuery         string
+	SessionIdx           int
 }
 
 func NewModel(roots []string) Model {
@@ -75,6 +81,13 @@ func (m Model) SelectedTool() (string, bool) {
 		return "", false
 	}
 	return m.FilteredTools[m.ToolIdx], true
+}
+
+func (m Model) SelectedSession() (SessionInfo, bool) {
+	if len(m.FilteredSessions) == 0 || m.SessionIdx >= len(m.FilteredSessions) {
+		return SessionInfo{}, false
+	}
+	return m.FilteredSessions[m.SessionIdx], true
 }
 
 func (m Model) CreateProjectPath() (string, bool) {

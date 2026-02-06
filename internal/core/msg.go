@@ -98,3 +98,16 @@ type MsgToolDelayElapsed struct {
 }
 
 func (MsgToolDelayElapsed) isMsg() {}
+
+type MsgSessionsLoaded struct {
+	Sessions []SessionInfo
+	Err      error
+}
+
+func (MsgSessionsLoaded) isMsg() {}
+
+type MsgSessionQueryChanged struct {
+	Query string
+}
+
+func (MsgSessionQueryChanged) isMsg() {}

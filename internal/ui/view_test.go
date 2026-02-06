@@ -190,7 +190,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.Query = "proj"
 				m.input.SetValue("proj")
 			},
-			helpParts: []string{"navigate", "enter", "select", "esc", "quit"},
+			helpParts: []string{"enter", "select", "ctrl+s", "sessions", "esc", "quit"},
 		},
 		{
 			name: "worktree",
@@ -199,7 +199,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.WorktreeQuery = "feat"
 				m.worktreeInput.SetValue("feat")
 			},
-			helpParts: []string{"navigate", "enter", "select", "ctrl+d", "delete", "esc", "back"},
+			helpParts: []string{"enter", "select", "ctrl+d", "delete", "ctrl+s", "sessions", "esc", "back"},
 		},
 		{
 			name: "worktree delete confirm",
@@ -216,12 +216,20 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.ToolQuery = "amp"
 				m.toolInput.SetValue("amp")
 			},
-			helpParts: []string{"navigate", "enter", "open", "esc", "back"},
+			helpParts: []string{"enter", "open", "ctrl+s", "sessions", "esc", "back"},
 		},
 		{
 			name:      "tool starting",
 			mode:      core.ModeToolStarting,
 			helpParts: []string{"esc", "back"},
+		},
+		{
+			name: "sessions",
+			mode: core.ModeSessions,
+			setup: func(m *Model) {
+				m.core.FilteredSessions = []core.SessionInfo{{Name: "session"}}
+			},
+			helpParts: []string{"enter", "attach", "esc", "back"},
 		},
 		{
 			name: "error",
@@ -261,6 +269,7 @@ func TestViewStepHeaders(t *testing.T) {
 		{"worktree", core.ModeWorktree, "Step 2: Select Worktree"},
 		{"worktree delete", core.ModeWorktreeDeleteConfirm, "Delete Worktree"},
 		{"tool", core.ModeTool, "Step 3: Select Tool"},
+		{"sessions", core.ModeSessions, "Active tmux sessions"},
 	}
 
 	for _, test := range tests {
