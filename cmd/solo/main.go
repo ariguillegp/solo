@@ -72,6 +72,17 @@ func main() {
 		}
 		return
 	}
+	if final.SelectedSessionName != "" {
+		if err := resetTerminal(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := sessions.AttachSession(final.SelectedSessionName); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 	_ = returnToPreviousSession()
 }
 

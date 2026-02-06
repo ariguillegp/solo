@@ -148,6 +148,24 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 			return m, []Effect{EffOpenSession{Spec: spec}}
 		}
 		return m, nil
+
+	case MsgSessionsLoaded:
+		if msg.Err != nil {
+			m.Mode = ModeError
+			m.Err = msg.Err
+			return m, nil
+		}
+		m.Sessions = msg.Sessions
+		m.FilteredSessions = FilterSessions(m.Sessions, m.SessionQuery)
+		m.SessionIdx = 0
+		return m, nil
+
+	case MsgSessionQueryChanged:
+		m.SessionQuery = msg.Query
+		m.FilteredSessions = FilterSessions(m.Sessions, m.SessionQuery)
+		m.SessionIdx = 0
+		return m, nil
+
 	}
 
 	return m, nil
@@ -171,6 +189,8 @@ func handleKey(m Model, key string) (Model, []Effect, bool) {
 		return handleToolKey(m, key)
 	case ModeToolStarting:
 		return handleToolStartingKey(m, key)
+	case ModeSessions:
+		return handleSessionsKey(m, key)
 	}
 	return m, nil, false
 }
@@ -210,6 +230,8 @@ func handleBrowsingKey(m Model, key string) (Model, []Effect, bool) {
 			return m, nil, true
 		}
 		return m, nil, true
+	case "ctrl+s":
+		return enterSessionsMode(m)
 	case "esc", "ctrl+c":
 		return m, []Effect{EffQuit{}}, true
 	}
@@ -280,6 +302,8 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 		m.SelectedWorktreePath = ""
 		m.WorktreeDeletePath = ""
 		return m, nil, true
+	case "ctrl+s":
+		return enterSessionsMode(m)
 	case "ctrl+c":
 		return m, []Effect{EffQuit{}}, true
 	}
@@ -345,6 +369,8 @@ func handleToolKey(m Model, key string) (Model, []Effect, bool) {
 		m.ToolIdx = 0
 		m.ToolError = ""
 		return m, nil, true
+	case "ctrl+s":
+		return enterSessionsMode(m)
 	case "ctrl+c":
 		return m, []Effect{EffQuit{}}, true
 	}
@@ -364,6 +390,31 @@ func handleToolStartingKey(m Model, key string) (Model, []Effect, bool) {
 	return m, nil, true
 }
 
+func handleSessionsKey(m Model, key string) (Model, []Effect, bool) {
+	switch key {
+	case "up", "ctrl+k":
+		if m.SessionIdx > 0 {
+			m.SessionIdx--
+		}
+		return m, nil, true
+	case "down", "ctrl+j":
+		if m.SessionIdx < len(m.FilteredSessions)-1 {
+			m.SessionIdx++
+		}
+		return m, nil, true
+	case "enter":
+		if session, ok := m.SelectedSession(); ok {
+			return m, []Effect{EffAttachSession{Session: session}}, true
+		}
+		return m, nil, true
+	case "esc":
+		return leaveSessionsMode(m)
+	case "ctrl+c":
+		return m, []Effect{EffQuit{}}, true
+	}
+	return m, nil, false
+}
+
 func enterToolMode(m Model) (Model, []Effect) {
 	m.Mode = ModeTool
 	m.ToolQuery = ""
@@ -374,6 +425,25 @@ func enterToolMode(m Model) (Model, []Effect) {
 	m.ToolWarmStart = make(map[string]time.Time, len(m.Tools))
 	m.ToolErrors = make(map[string]string, len(m.Tools))
 	return m, []Effect{EffPrewarmAllTools{DirPath: m.SelectedWorktreePath, Tools: m.Tools}}
+}
+
+func enterSessionsMode(m Model) (Model, []Effect, bool) {
+	m.SessionReturnMode = m.Mode
+	m.Mode = ModeSessions
+	m.SessionQuery = ""
+	m.SessionIdx = 0
+	m.Sessions = nil
+	m.FilteredSessions = nil
+	return m, []Effect{EffListSessions{}}, true
+}
+
+func leaveSessionsMode(m Model) (Model, []Effect, bool) {
+	m.Mode = m.SessionReturnMode
+	m.SessionQuery = ""
+	m.SessionIdx = 0
+	m.Sessions = nil
+	m.FilteredSessions = nil
+	return m, nil, true
 }
 
 func Init(m Model) (Model, []Effect) {

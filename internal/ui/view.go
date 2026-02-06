@@ -66,7 +66,7 @@ func (m Model) renderSuggestionList(lines []string, selectedIdx int) string {
 	}
 
 	if end < len(lines) {
-		out.WriteString("\n")
+		out.WriteString("\n\n")
 		out.WriteString(m.styles.ScrollIndicator.Render("  ▼ more below"))
 	}
 
@@ -112,7 +112,7 @@ func (m Model) View() string {
 			content = input
 		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
-			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+t", "theme"}, {"esc", "quit"},
+			{"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+s", "sessions"}, {"ctrl+t", "theme"}, {"esc", "quit"},
 		})
 
 	case core.ModeProjectDeleteConfirm:
@@ -153,7 +153,7 @@ func (m Model) View() string {
 			content += "\n" + m.styles.Warning.Render(m.core.ProjectWarning)
 		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
-			{"↑/↓", "navigate"}, {"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+t", "theme"}, {"esc", "back"},
+			{"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+s", "sessions"}, {"ctrl+t", "theme"}, {"esc", "back"},
 		})
 
 	case core.ModeWorktreeDeleteConfirm:
@@ -179,7 +179,7 @@ func (m Model) View() string {
 			content += "\n" + m.styles.Error.Render(m.core.ToolError)
 		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
-			{"↑/↓", "navigate"}, {"enter", "open"}, {"ctrl+t", "theme"}, {"esc", "back"},
+			{"enter", "open"}, {"ctrl+s", "sessions"}, {"ctrl+t", "theme"}, {"esc", "back"},
 		})
 
 	case core.ModeToolStarting:
@@ -189,6 +189,21 @@ func (m Model) View() string {
 		}
 		content = fmt.Sprintf("%s Starting %s...", m.spinner.View(), toolName)
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "back"}})
+
+	case core.ModeSessions:
+		header = m.styles.Title.Render("Active tmux sessions")
+		prompt := m.styles.Prompt.Render("Filter sessions:")
+		input := prompt + " " + m.sessionInput.View()
+		lines := make([]string, 0, len(m.core.FilteredSessions))
+		for _, session := range m.core.FilteredSessions {
+			lines = append(lines, core.SessionDisplayLabel(session))
+		}
+		if len(lines) > 0 {
+			content = input + "\n" + m.renderSuggestionList(lines, m.core.SessionIdx)
+		} else {
+			content = input
+		}
+		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"enter", "attach"}, {"esc", "back"}})
 
 	case core.ModeError:
 		content = m.styles.Error.Render(fmt.Sprintf("Error: %v", m.core.Err))
@@ -238,9 +253,7 @@ func (m Model) renderThemePicker() string {
 		out.WriteString(row)
 	}
 
-	helpLine := m.renderHelpLine([]struct{ key, desc string }{
-		{"↑/↓", "navigate"}, {"enter", "select"}, {"esc", "cancel"},
-	})
+	helpLine := m.renderHelpLine([]struct{ key, desc string }{{"enter", "select"}, {"esc", "cancel"}})
 
 	content := header + "\n\n" + out.String() + "\n\n" + helpLine
 

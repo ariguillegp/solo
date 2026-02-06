@@ -69,3 +69,23 @@ func FilterTools(tools []string, query string) []string {
 
 	return result
 }
+
+func FilterSessions(sessions []SessionInfo, query string) []SessionInfo {
+	if query == "" {
+		return sessions
+	}
+
+	query = strings.ToLower(query)
+	var result []SessionInfo
+
+	for _, session := range sessions {
+		name := strings.ToLower(session.Name)
+		path := strings.ToLower(session.DirPath)
+		tool := strings.ToLower(session.Tool)
+		if fuzzyMatch(name, query) || fuzzyMatch(path, query) || fuzzyMatch(tool, query) {
+			result = append(result, session)
+		}
+	}
+
+	return result
+}

@@ -64,3 +64,13 @@ type EffCheckToolReady struct {
 }
 
 func (EffCheckToolReady) isEffect() {}
+
+type EffListSessions struct{}
+
+func (EffListSessions) isEffect() {}
+
+type EffAttachSession struct {
+	Session SessionInfo
+}
+
+func (EffAttachSession) isEffect() {}

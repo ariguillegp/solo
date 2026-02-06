@@ -19,6 +19,12 @@ type SessionSpec struct {
 	Detach  bool
 }
 
+type SessionInfo struct {
+	Name    string
+	DirPath string
+	Tool    string
+}
+
 type Worktree struct {
 	Path   string
 	Name   string
