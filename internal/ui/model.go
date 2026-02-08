@@ -30,6 +30,7 @@ type Model struct {
 	themes              []Theme
 	styles              Styles
 	showThemePicker     bool
+	showHelp            bool
 	prevThemeIdx        int
 	prevStyles          Styles
 }
@@ -111,6 +112,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+c":
 				return m, tea.Quit
 			}
+			return m, nil
+		}
+
+		if m.showHelp {
+			switch key {
+			case "esc", "?":
+				m.showHelp = false
+				switch m.core.Mode {
+				case core.ModeBrowsing:
+					m.input.Focus()
+				case core.ModeWorktree:
+					m.worktreeInput.Focus()
+				case core.ModeTool:
+					m.toolInput.Focus()
+				case core.ModeSessions:
+					m.sessionInput.Focus()
+				}
+				return m, nil
+			case "ctrl+c":
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if key == "?" && m.core.Mode != core.ModeLoading {
+			m.showHelp = true
+			m.input.Blur()
+			m.worktreeInput.Blur()
+			m.toolInput.Blur()
+			m.sessionInput.Blur()
 			return m, nil
 		}
 
