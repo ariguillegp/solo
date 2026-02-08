@@ -4,12 +4,13 @@ import "github.com/charmbracelet/lipgloss"
 
 const (
 	minBoxWidth     = 60
-	maxBoxWidth     = 100
-	boxWidthPercent = 50
+	maxBoxWidth     = 120
+	boxWidthPercent = 60
 )
 
 type Styles struct {
 	Title              lipgloss.Style
+	SectionTitle       lipgloss.Style
 	Suggestion         lipgloss.Style
 	SelectedSuggestion lipgloss.Style
 	ScrollIndicator    lipgloss.Style
@@ -21,6 +22,14 @@ type Styles struct {
 	DestructiveTitle   lipgloss.Style
 	DestructiveText    lipgloss.Style
 	DestructiveAction  lipgloss.Style
+	Action             lipgloss.Style
+	SelectedAction     lipgloss.Style
+	BreadcrumbLabel    lipgloss.Style
+	BreadcrumbValue    lipgloss.Style
+	Count              lipgloss.Style
+	Path               lipgloss.Style
+	SelectedPath       lipgloss.Style
+	EmptyState         lipgloss.Style
 	BaseBox            lipgloss.Style
 }
 
@@ -30,10 +39,13 @@ func NewStyles(theme Theme) Styles {
 		Title: lipgloss.NewStyle().
 			Foreground(theme.Accent).
 			Bold(true),
+		SectionTitle: lipgloss.NewStyle().
+			Foreground(theme.Accent).
+			Bold(true),
 		Suggestion: lipgloss.NewStyle().
-			Foreground(theme.Muted),
+			Foreground(theme.Text),
 		SelectedSuggestion: lipgloss.NewStyle().
-			Foreground(theme.Text).
+			Foreground(theme.Accent).
 			Bold(true),
 		ScrollIndicator: lipgloss.NewStyle().
 			Foreground(theme.Muted),
@@ -60,6 +72,30 @@ func NewStyles(theme Theme) Styles {
 			Background(destructiveRed).
 			Bold(true).
 			Padding(0, 1),
+		Action: lipgloss.NewStyle().
+			Foreground(theme.Background).
+			Background(theme.Text).
+			Bold(true).
+			Padding(0, 1),
+		SelectedAction: lipgloss.NewStyle().
+			Foreground(theme.Accent).
+			Bold(true).
+			Padding(0, 1),
+		BreadcrumbLabel: lipgloss.NewStyle().
+			Foreground(theme.Muted),
+		BreadcrumbValue: lipgloss.NewStyle().
+			Foreground(theme.Text).
+			Bold(true),
+		Count: lipgloss.NewStyle().
+			Foreground(theme.Muted),
+		Path: lipgloss.NewStyle().
+			Foreground(theme.Muted),
+		SelectedPath: lipgloss.NewStyle().
+			Foreground(theme.Muted).
+			Italic(true),
+		EmptyState: lipgloss.NewStyle().
+			Foreground(theme.Muted).
+			Italic(true),
 		BaseBox: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Accent).

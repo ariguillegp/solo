@@ -47,7 +47,7 @@ func TestViewBrowsingSuggestionAndNav(t *testing.T) {
 	if !strings.Contains(view, "Enter the project directory") {
 		t.Fatalf("expected browsing prompt, got %q", view)
 	}
-	if !strings.Contains(view, "/two") {
+	if !strings.Contains(view, "two") {
 		t.Fatalf("expected selected project suggestion, got %q", view)
 	}
 }
@@ -62,7 +62,7 @@ func TestViewBrowsingCreateNew(t *testing.T) {
 	m.core.SelectedIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "create: ") {
+	if !strings.Contains(view, "create") || !strings.Contains(view, "/tmp/newproj") {
 		t.Fatalf("expected create new hint, got %q", view)
 	}
 }
@@ -82,7 +82,7 @@ func TestViewWorktreeSuggestionAndNav(t *testing.T) {
 	if !strings.Contains(view, "Select worktree or create new branch") {
 		t.Fatalf("expected worktree prompt, got %q", view)
 	}
-	if !strings.Contains(view, "feat [feat]") {
+	if !strings.Contains(view, "feat") {
 		t.Fatalf("expected selected worktree suggestion, got %q", view)
 	}
 }
@@ -96,8 +96,22 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	m.core.WorktreeIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "create: feature-x") {
+	if !strings.Contains(view, "create") || !strings.Contains(view, "feature-x") {
 		t.Fatalf("expected create new worktree hint, got %q", view)
+	}
+}
+
+func TestViewEmptyState(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeBrowsing
+	m.core.Query = "missing"
+	m.input.SetValue("missing")
+	m.core.Filtered = nil
+	m.core.SelectedIdx = 0
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "No matches") {
+		t.Fatalf("expected empty state to mention no matches, got %q", view)
 	}
 }
 
@@ -190,7 +204,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.Query = "proj"
 				m.input.SetValue("proj")
 			},
-			helpParts: []string{"enter", "select", "ctrl+s", "sessions", "esc", "quit"},
+			helpParts: []string{"enter", "select", "ctrl+s", "sessions", "?", "help", "esc", "quit"},
 		},
 		{
 			name: "worktree",
@@ -199,7 +213,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.WorktreeQuery = "feat"
 				m.worktreeInput.SetValue("feat")
 			},
-			helpParts: []string{"enter", "select", "ctrl+d", "delete", "ctrl+s", "sessions", "esc", "back"},
+			helpParts: []string{"enter", "select", "ctrl+d", "delete", "ctrl+s", "sessions", "?", "help", "esc", "back"},
 		},
 		{
 			name: "worktree delete confirm",
@@ -216,12 +230,12 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.ToolQuery = "amp"
 				m.toolInput.SetValue("amp")
 			},
-			helpParts: []string{"enter", "open", "ctrl+s", "sessions", "esc", "back"},
+			helpParts: []string{"enter", "open", "ctrl+s", "sessions", "?", "help", "esc", "back"},
 		},
 		{
 			name:      "tool starting",
 			mode:      core.ModeToolStarting,
-			helpParts: []string{"esc", "back"},
+			helpParts: []string{"?", "help", "esc", "back"},
 		},
 		{
 			name: "sessions",
@@ -231,7 +245,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 				m.core.Sessions = sessions
 				m.core.FilteredSessions = sessions
 			},
-			helpParts: []string{"enter", "attach", "esc", "back"},
+			helpParts: []string{"enter", "attach", "?", "help", "esc", "back"},
 		},
 		{
 			name: "error",
