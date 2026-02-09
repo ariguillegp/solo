@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/ariguillegp/solo/internal/core"
-	"github.com/google/uuid"
 )
 
 type OSFilesystem struct{}
@@ -162,27 +161,19 @@ func (f *OSFilesystem) ListWorktreePaths(projectPath string) ([]string, error) {
 	if !hasGitMarker(projectPath) {
 		return nil, fmt.Errorf("Project has no repository. Create a project first.")
 	}
-
-	cmd := gitCommand(projectPath, "worktree", "list", "--porcelain")
-	output, err := cmd.Output()
-	if err != nil {
+	if err := f.migrateLegacyWorktrees(projectPath); err != nil {
 		return nil, err
 	}
-
-	var paths []string
-	for _, line := range bytes.Split(output, []byte("\n")) {
-		lineStr := string(line)
-		if strings.HasPrefix(lineStr, "worktree ") {
-			paths = append(paths, strings.TrimPrefix(lineStr, "worktree "))
-		}
-	}
-	return paths, nil
+	return listWorktreePathsRaw(projectPath)
 }
 
 func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, error) {
 	projectPath = expandPath(projectPath)
 	if !hasGitMarker(projectPath) {
 		return core.WorktreeListing{Warning: "Project has no repository. Create a project first."}, nil
+	}
+	if err := f.migrateLegacyWorktrees(projectPath); err != nil {
+		return core.WorktreeListing{}, err
 	}
 
 	pruneCmd := gitCommand(projectPath, "worktree", "prune")
@@ -196,7 +187,9 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 
 	projectName := filepath.Base(projectPath)
 	soloDir := expandPath(soloWorktreesDir)
-	prefix := projectName + "--"
+	soloDirClean := filepath.Clean(soloDir)
+	projectDir := filepath.Join(soloDirClean, projectName)
+	projectDirPrefix := projectDir + string(filepath.Separator)
 
 	var worktrees []core.Worktree
 	var current core.Worktree
@@ -226,10 +219,9 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 	for _, wt := range worktrees {
 		wtClean := filepath.Clean(wt.Path)
 		isRoot := wtClean == filepath.Clean(projectPath)
-		isUnderSolo := strings.HasPrefix(wtClean, soloDir+string(filepath.Separator)) &&
-			strings.HasPrefix(filepath.Base(wtClean), prefix)
+		isUnderSoloProject := strings.HasPrefix(wtClean, projectDirPrefix)
 
-		if !isRoot && !isUnderSolo {
+		if !isRoot && !isUnderSoloProject {
 			continue
 		}
 
@@ -248,6 +240,9 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 	if !hasGitMarker(projectPath) {
 		return "", fmt.Errorf("Project has no repository. Create a project first.")
 	}
+	if err := f.migrateLegacyWorktrees(projectPath); err != nil {
+		return "", err
+	}
 
 	cleanBranch := strings.TrimSpace(branchName)
 	if cleanBranch == "" {
@@ -256,14 +251,20 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 
 	projectName := filepath.Base(projectPath)
 	sanitizedBranch := core.SanitizeWorktreeName(cleanBranch)
-	shortUUID := uuid.New().String()[:8]
-	worktreeDir := fmt.Sprintf("%s--%s--%s", projectName, sanitizedBranch, shortUUID)
+	if strings.TrimSpace(sanitizedBranch) == "" {
+		return "", fmt.Errorf("worktree name cannot be empty")
+	}
 
 	soloDir := expandPath(soloWorktreesDir)
-	if err := os.MkdirAll(soloDir, 0755); err != nil {
+	projectDir := filepath.Join(soloDir, projectName)
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
 		return "", err
 	}
-	worktreePath := filepath.Join(soloDir, worktreeDir)
+	_ = f.PruneWorktrees(projectPath)
+	worktreePath := filepath.Join(projectDir, sanitizedBranch)
+	if worktreePathTaken(projectPath, worktreePath) {
+		return "", fmt.Errorf("%w for branch %s", core.ErrWorktreeExists, cleanBranch)
+	}
 
 	hasCommit, _ := repoHasCommit(projectPath)
 	if !hasCommit {
@@ -289,10 +290,138 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 	return worktreePath, nil
 }
 
+func worktreePathTaken(projectPath, worktreePath string) bool {
+	if _, err := os.Stat(worktreePath); err == nil {
+		return true
+	} else if !os.IsNotExist(err) {
+		return true
+	}
+
+	return isRegisteredWorktree(projectPath, worktreePath)
+}
+
+func isShortUUIDPart(part string) bool {
+	if len(part) != 8 {
+		return false
+	}
+	for i := 0; i < len(part); i++ {
+		ch := part[i]
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func listWorktreePathsRaw(projectPath string) ([]string, error) {
+	cmd := gitCommand(projectPath, "worktree", "list", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var paths []string
+	for _, line := range bytes.Split(output, []byte("\n")) {
+		lineStr := string(line)
+		if strings.HasPrefix(lineStr, "worktree ") {
+			paths = append(paths, strings.TrimPrefix(lineStr, "worktree "))
+		}
+	}
+	return paths, nil
+}
+
+func (f *OSFilesystem) migrateLegacyWorktrees(projectPath string) error {
+	projectPath = expandPath(projectPath)
+	if !hasGitMarker(projectPath) {
+		return fmt.Errorf("Project has no repository. Create a project first.")
+	}
+
+	projectName := filepath.Base(projectPath)
+	if projectName == "" || projectName == "." || projectName == string(filepath.Separator) {
+		return fmt.Errorf("cannot determine project name for migration")
+	}
+
+	paths, err := listWorktreePathsRaw(projectPath)
+	if err != nil {
+		return err
+	}
+
+	soloDir := expandPath(soloWorktreesDir)
+	legacyPrefix := projectName + "--"
+	legacyRoot := filepath.Clean(soloDir)
+	projectDir := filepath.Join(soloDir, projectName)
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
+		return err
+	}
+
+	for _, wtPath := range paths {
+		wtClean := filepath.Clean(wtPath)
+		if filepath.Dir(wtClean) != legacyRoot {
+			continue
+		}
+		base := filepath.Base(wtClean)
+		if !strings.HasPrefix(base, legacyPrefix) {
+			continue
+		}
+		branch, ok := legacyBranchFromName(base, legacyPrefix)
+		if !ok {
+			return fmt.Errorf("cannot migrate legacy worktree %s", base)
+		}
+		if strings.TrimSpace(branch) == "" {
+			return fmt.Errorf("cannot migrate legacy worktree %s", base)
+		}
+		target := filepath.Join(projectDir, branch)
+		if filepath.Clean(target) == wtClean {
+			continue
+		}
+		if worktreePathTaken(projectPath, target) {
+			return fmt.Errorf("cannot migrate %s: target already exists", base)
+		}
+
+		moveCmd := gitCommand(projectPath, "worktree", "move", wtClean, target)
+		output, err := moveCmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("%s: %s", err, string(output))
+		}
+	}
+
+	return nil
+}
+
+func legacyBranchFromName(name, prefix string) (string, bool) {
+	if !strings.HasPrefix(name, prefix) {
+		return "", false
+	}
+	trimmed := strings.TrimPrefix(name, prefix)
+	trimmed = strings.TrimSpace(trimmed)
+	if trimmed == "" {
+		return "", false
+	}
+	parts := strings.Split(trimmed, "--")
+	if len(parts) == 0 {
+		return "", false
+	}
+	if len(parts) == 1 {
+		return strings.TrimSpace(parts[0]), true
+	}
+	last := strings.TrimSpace(parts[len(parts)-1])
+	if isShortUUIDPart(last) {
+		branch := strings.TrimSpace(strings.Join(parts[:len(parts)-1], "--"))
+		if branch == "" {
+			return "", false
+		}
+		return branch, true
+	}
+	return strings.TrimSpace(strings.Join(parts, "--")), true
+}
+
 func (f *OSFilesystem) PruneWorktrees(projectPath string) error {
 	projectPath = expandPath(projectPath)
 	if !hasGitMarker(projectPath) {
 		return nil
+	}
+	if err := f.migrateLegacyWorktrees(projectPath); err != nil {
+		return err
 	}
 
 	cmd := gitCommand(projectPath, "worktree", "prune")
@@ -304,6 +433,9 @@ func (f *OSFilesystem) DeleteWorktree(projectPath, worktreePath string) error {
 	projectPath = expandPath(projectPath)
 	if !hasGitMarker(projectPath) {
 		return fmt.Errorf("Project has no repository. Create a project first.")
+	}
+	if err := f.migrateLegacyWorktrees(projectPath); err != nil {
+		return err
 	}
 
 	cleanPath := expandPath(worktreePath)

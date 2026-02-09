@@ -1,6 +1,9 @@
 package core
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 func Update(m Model, msg Msg) (Model, []Effect) {
 	switch msg := msg.(type) {
@@ -73,10 +76,16 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		m.WorktreeQuery = msg.Query
 		m.FilteredWT = FilterWorktrees(m.Worktrees, m.WorktreeQuery)
 		m.WorktreeIdx = 0
+		m.ProjectWarning = ""
 		return m, nil
 
 	case MsgWorktreeCreated:
 		if msg.Err != nil {
+			if errors.Is(msg.Err, ErrWorktreeExists) {
+				m.Mode = ModeWorktree
+				m.ProjectWarning = "Worktree already exists for that branch. Select it from the list."
+				return m, nil
+			}
 			m.Mode = ModeError
 			m.Err = msg.Err
 			return m, nil

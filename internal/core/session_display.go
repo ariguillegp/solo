@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const soloWorktreesMarker = "worktrees-"
-
 func SessionDisplayLabel(session SessionInfo) string {
 	worktreeName := SessionWorktreeName(session.DirPath)
 	if worktreeName == "" {
@@ -38,28 +36,36 @@ func SessionWorktreeName(dirPath string) string {
 	if dirPath == "" {
 		return ""
 	}
-
-	if strings.Contains(dirPath, string(filepath.Separator)) {
-		base := filepath.Base(dirPath)
-		if base != "." && base != string(filepath.Separator) {
-			return base
+	cleanPath := filepath.Clean(dirPath)
+	parts := strings.Split(cleanPath, string(filepath.Separator))
+	worktreeIndex := -1
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] == "worktrees" {
+			worktreeIndex = i
+			break
 		}
 	}
-
-	if idx := strings.LastIndex(dirPath, soloWorktreesMarker); idx >= 0 {
-		name := strings.TrimSpace(dirPath[idx+len(soloWorktreesMarker):])
-		if name != "" {
-			return name
-		}
+	if worktreeIndex == -1 || worktreeIndex == 0 || parts[worktreeIndex-1] != ".solo" {
+		return ""
 	}
-
-	return dirPath
+	if len(parts) <= worktreeIndex+2 {
+		return ""
+	}
+	project := strings.TrimSpace(parts[worktreeIndex+1])
+	branch := strings.TrimSpace(parts[worktreeIndex+2])
+	if project == "" || branch == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s--%s", project, branch)
 }
 
 func SessionWorktreeProjectBranch(worktreeName string) (string, string) {
 	worktreeName = strings.TrimSpace(worktreeName)
 	if worktreeName == "" {
 		return "", ""
+	}
+	if !strings.Contains(worktreeName, "--") {
+		return filepath.Base(worktreeName), ""
 	}
 
 	parts := strings.Split(worktreeName, "--")
@@ -73,26 +79,7 @@ func SessionWorktreeProjectBranch(worktreeName string) (string, string) {
 		return project, branch
 	}
 
-	if isShortUUIDPart(parts[len(parts)-1]) {
-		branch := strings.TrimSpace(parts[len(parts)-2])
-		project := strings.TrimSpace(strings.Join(parts[:len(parts)-2], "--"))
-		return project, branch
-	}
-
 	project := strings.TrimSpace(strings.Join(parts[:len(parts)-1], "--"))
 	branch := strings.TrimSpace(parts[len(parts)-1])
 	return project, branch
-}
-
-func isShortUUIDPart(part string) bool {
-	if len(part) != 8 {
-		return false
-	}
-	for i := 0; i < len(part); i++ {
-		ch := part[i]
-		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
-			return false
-		}
-	}
-	return true
 }

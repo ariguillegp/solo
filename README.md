@@ -122,7 +122,7 @@ selected theme updates UI colors across the app.
 
 ### Project Layout
 
-Solo expects projects to be valid git repositories, which by default will be found under `~/Projects` and additional worktrees will be created under `~/.solo/worktrees/`
+Solo expects projects to be valid git repositories, which by default will be found under `~/Projects` and additional worktrees will be created under `~/.solo/worktrees/<project>/<branch>`.
 
 Stale worktree references (from manually deleted directories) are automatically
 pruned whenever the worktree list is loaded, keeping the list accurate.

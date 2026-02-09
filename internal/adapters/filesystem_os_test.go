@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ariguillegp/solo/internal/core"
 )
 
 func TestCreateWorktreeFailsWithoutGitRepo(t *testing.T) {
@@ -32,16 +34,15 @@ func TestCreateWorktreeCreatesUnderSoloDir(t *testing.T) {
 	}
 
 	home, _ := os.UserHomeDir()
-	soloDir := filepath.Join(home, ".solo", "worktrees")
+	projectName := filepath.Base(projectPath)
+	soloDir := filepath.Join(home, ".solo", "worktrees", projectName)
 	if !strings.HasPrefix(worktreePath, soloDir) {
 		t.Fatalf("expected worktree under %s, got %s", soloDir, worktreePath)
 	}
 
-	projectName := filepath.Base(projectPath)
 	wtName := filepath.Base(worktreePath)
-	expectedPrefix := projectName + "--feature-test--"
-	if !strings.HasPrefix(wtName, expectedPrefix) {
-		t.Fatalf("expected worktree name to start with %q, got %q", expectedPrefix, wtName)
+	if wtName != "feature-test" {
+		t.Fatalf("expected worktree name to be %q, got %q", "feature-test", wtName)
 	}
 
 	if _, err := os.Stat(worktreePath); err != nil {
@@ -51,6 +52,28 @@ func TestCreateWorktreeCreatesUnderSoloDir(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.RemoveAll(worktreePath)
 	})
+}
+
+func TestCreateWorktreeRejectsExistingBranch(t *testing.T) {
+	projectPath := t.TempDir()
+	initRepo(t, projectPath)
+
+	fs := &OSFilesystem{}
+	worktreePath, err := fs.CreateWorktree(projectPath, "feature/test")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(worktreePath)
+	}()
+
+	_, err = fs.CreateWorktree(projectPath, "feature/test")
+	if err == nil {
+		t.Fatal("expected error when creating duplicate branch worktree")
+	}
+	if !strings.Contains(err.Error(), core.ErrWorktreeExists.Error()) {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func TestListWorktreesWarnsWhenNoGitRepo(t *testing.T) {
@@ -282,9 +305,9 @@ func TestDeleteWorktreeRejectsUnregisteredWorktree(t *testing.T) {
 	initRepo(t, projectPath)
 
 	home, _ := os.UserHomeDir()
-	soloDir := filepath.Join(home, ".solo", "worktrees")
 	projectName := filepath.Base(projectPath)
-	worktreePath := filepath.Join(soloDir, projectName+"--fake-branch--deadbeef")
+	soloDir := filepath.Join(home, ".solo", "worktrees", projectName)
+	worktreePath := filepath.Join(soloDir, "fake-branch")
 
 	if err := os.MkdirAll(worktreePath, 0755); err != nil {
 		t.Fatalf("unexpected error creating unregistered worktree: %v", err)

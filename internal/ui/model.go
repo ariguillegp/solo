@@ -339,13 +339,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case worktreeCreatedMsg:
-		coreModel, effects := core.Update(m.core, core.MsgWorktreeCreated{
+		coreMsg := core.MsgWorktreeCreated{
 			Path: msg.path,
 			Err:  msg.err,
-		})
+		}
+		coreModel, effects := core.Update(m.core, coreMsg)
 		m.core = coreModel
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
+		}
+		if msg.err != nil && errors.Is(msg.err, core.ErrWorktreeExists) {
+			m.worktreeInput.Focus()
+			cmd := m.runEffects(effects)
+			return m, cmd
 		}
 		if m.core.Mode == core.ModeTool {
 			m.worktreeInput.Blur()
