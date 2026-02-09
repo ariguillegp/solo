@@ -217,7 +217,7 @@ func (m Model) View() string {
 	case core.ModeProjectDeleteConfirm:
 		header = m.styles.DestructiveTitle.Render("⚠ Delete Project")
 		breadcrumb = m.renderBreadcrumb()
-		prompt := m.styles.DestructiveText.Render("This will delete the project and all worktrees:")
+		prompt := m.styles.DestructiveText.Render("This will delete the project and all workspaces:")
 		path := m.styles.DestructiveText.Render("  " + m.displayPath(m.core.ProjectDeletePath))
 		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
 		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
@@ -225,9 +225,9 @@ func (m Model) View() string {
 		helpLine = ""
 
 	case core.ModeWorktree:
-		header = m.styles.Title.Render("Step 2: Select Worktree")
+		header = m.styles.Title.Render("Step 2: Select Workspace")
 		breadcrumb = m.renderBreadcrumb()
-		prompt := m.styles.Prompt.Render("Select worktree or create new branch:")
+		prompt := m.styles.Prompt.Render("Select workspace or create new branch:")
 		input := prompt + " " + m.worktreeInput.View()
 		createName, canCreate := m.core.CreateWorktreeName()
 		createLabel := ""
@@ -265,9 +265,9 @@ func (m Model) View() string {
 		})
 
 	case core.ModeWorktreeDeleteConfirm:
-		header = m.styles.DestructiveTitle.Render("⚠ Delete Worktree")
+		header = m.styles.DestructiveTitle.Render("⚠ Delete Workspace")
 		breadcrumb = m.renderBreadcrumb()
-		prompt := m.styles.DestructiveText.Render("This will delete the following worktree:")
+		prompt := m.styles.DestructiveText.Render("This will delete the following workspace:")
 		path := m.styles.DestructiveText.Render("  " + m.displayPath(m.core.WorktreeDeletePath))
 		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
 		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
@@ -373,7 +373,7 @@ func (m Model) renderBreadcrumb() string {
 		items = append(items, m.renderBreadcrumbItem("Project", filepath.Base(m.core.SelectedProject)))
 	}
 	if m.core.SelectedWorktreePath != "" {
-		items = append(items, m.renderBreadcrumbItem("Worktree", filepath.Base(m.core.SelectedWorktreePath)))
+		items = append(items, m.renderBreadcrumbItem("Workspace", filepath.Base(m.core.SelectedWorktreePath)))
 	}
 	if m.core.Mode == core.ModeTool || m.core.Mode == core.ModeToolStarting {
 		if tool, ok := m.core.SelectedTool(); ok {
@@ -473,7 +473,7 @@ func (m Model) renderHelpModal() string {
 		{
 			title: "Actions",
 			rows: []string{
-				m.renderHelpRow("ctrl+d", "delete project/worktree"),
+				m.renderHelpRow("ctrl+d", "delete project/workspace"),
 				m.renderHelpRow("ctrl+t", "theme picker"),
 			},
 		},
