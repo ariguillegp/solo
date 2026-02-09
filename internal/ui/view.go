@@ -185,7 +185,7 @@ func (m Model) View() string {
 		createRow := suggestionRow{}
 		if canCreate {
 			createLabel = createPath
-			createRow = suggestionRow{primary: createPath, actionLabel: "create"}
+			createRow = suggestionRow{primary: m.displayPath(createPath), actionLabel: "create"}
 		}
 		listLimit := m.listLimit()
 
@@ -194,7 +194,7 @@ func (m Model) View() string {
 			for _, dir := range m.core.Filtered {
 				rows = append(rows, suggestionRow{
 					primary: dir.Name,
-					detail:  dir.Path,
+					detail:  m.displayPath(dir.Path),
 				})
 			}
 			if createLabel != "" {
@@ -218,7 +218,7 @@ func (m Model) View() string {
 		header = m.styles.DestructiveTitle.Render("⚠ Delete Project")
 		breadcrumb = m.renderBreadcrumb()
 		prompt := m.styles.DestructiveText.Render("This will delete the project and all worktrees:")
-		path := m.styles.DestructiveText.Render("  " + m.core.ProjectDeletePath)
+		path := m.styles.DestructiveText.Render("  " + m.displayPath(m.core.ProjectDeletePath))
 		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
 		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
 		content = prompt + "\n\n" + path + "\n\n" + warning + "\n\n" + actions
@@ -241,10 +241,7 @@ func (m Model) View() string {
 		if len(m.core.FilteredWT) > 0 {
 			rows := make([]suggestionRow, 0, len(m.core.FilteredWT)+1)
 			for _, wt := range m.core.FilteredWT {
-				rows = append(rows, suggestionRow{
-					primary: wt.Name,
-					detail:  wt.Branch,
-				})
+				rows = append(rows, suggestionRow{primary: wt.Name, detail: wt.Branch})
 			}
 			if createLabel != "" {
 				rows = append(rows, createRow)
@@ -271,7 +268,7 @@ func (m Model) View() string {
 		header = m.styles.DestructiveTitle.Render("⚠ Delete Worktree")
 		breadcrumb = m.renderBreadcrumb()
 		prompt := m.styles.DestructiveText.Render("This will delete the following worktree:")
-		path := m.styles.DestructiveText.Render("  " + m.core.WorktreeDeletePath)
+		path := m.styles.DestructiveText.Render("  " + m.displayPath(m.core.WorktreeDeletePath))
 		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
 		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
 		content = prompt + "\n\n" + path + "\n\n" + warning + "\n\n" + actions
@@ -323,7 +320,11 @@ func (m Model) View() string {
 		input := prompt + " " + m.sessionInput.View()
 		rows := make([]suggestionRow, 0, len(m.core.FilteredSessions))
 		for _, session := range m.core.FilteredSessions {
-			rows = append(rows, suggestionRow{primary: core.SessionDisplayLabel(session)})
+			label := core.SessionDisplayLabel(session)
+			if label == "" {
+				label = m.displayPath(session.DirPath)
+			}
+			rows = append(rows, suggestionRow{primary: label})
 		}
 		listLimit := m.listLimit()
 		if len(rows) > 0 {

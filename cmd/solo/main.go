@@ -34,6 +34,7 @@ func main() {
 	if len(roots) == 0 {
 		roots = []string{"~/Projects"}
 	}
+	roots = expandRoots(roots)
 
 	fs := adapters.NewOSFilesystem()
 	sessions := adapters.NewTmuxSession()
@@ -211,6 +212,21 @@ func resolveWorktreePath(fs ports.Filesystem, projectPath, worktree string) (str
 	}
 
 	return fs.CreateWorktree(projectPath, worktree)
+}
+
+func expandRoots(roots []string) []string {
+	if len(roots) == 0 {
+		return roots
+	}
+	expanded := make([]string, 0, len(roots))
+	for _, root := range roots {
+		expandedRoot := expandPath(root)
+		if expandedRoot == "" {
+			expandedRoot = root
+		}
+		expanded = append(expanded, expandedRoot)
+	}
+	return expanded
 }
 
 func expandPath(path string) string {

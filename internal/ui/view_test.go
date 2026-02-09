@@ -34,6 +34,7 @@ func TestViewLoading(t *testing.T) {
 
 func TestViewBrowsingSuggestionAndNav(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeBrowsing
 	m.core.Query = "proj"
 	m.input.SetValue("proj")
@@ -47,13 +48,35 @@ func TestViewBrowsingSuggestionAndNav(t *testing.T) {
 	if !strings.Contains(view, "Enter the project directory") {
 		t.Fatalf("expected browsing prompt, got %q", view)
 	}
-	if !strings.Contains(view, "two") {
+	if !strings.Contains(view, "two - /two") {
 		t.Fatalf("expected selected project suggestion, got %q", view)
+	}
+}
+
+func TestViewBrowsingUsesTildeForHome(t *testing.T) {
+	m := newTestModel()
+	m.height = 25
+	m.core.Mode = core.ModeBrowsing
+	m.core.Query = "proj"
+	m.input.SetValue("proj")
+	m.core.Filtered = []core.DirEntry{
+		{Path: "/home/demo/Projects/solo", Name: "solo"},
+	}
+	m.core.SelectedIdx = 0
+	m.homeDir = "/home/demo"
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "~/Projects/solo") {
+		t.Fatalf("expected home path to use tilde, got %q", view)
+	}
+	if strings.Contains(view, "/home/demo/Projects/solo") {
+		t.Fatalf("expected home path to be replaced, got %q", view)
 	}
 }
 
 func TestViewBrowsingCreateNew(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeBrowsing
 	m.core.Query = "newproj"
 	m.input.SetValue("newproj")
@@ -62,13 +85,14 @@ func TestViewBrowsingCreateNew(t *testing.T) {
 	m.core.SelectedIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "create") || !strings.Contains(view, "/tmp/newproj") {
+	if !strings.Contains(view, "create  /tmp/newproj") {
 		t.Fatalf("expected create new hint, got %q", view)
 	}
 }
 
 func TestViewWorktreeSuggestionAndNav(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeWorktree
 	m.core.WorktreeQuery = "feat"
 	m.worktreeInput.SetValue("feat")
@@ -82,13 +106,14 @@ func TestViewWorktreeSuggestionAndNav(t *testing.T) {
 	if !strings.Contains(view, "Select worktree or create new branch") {
 		t.Fatalf("expected worktree prompt, got %q", view)
 	}
-	if !strings.Contains(view, "feat") {
+	if !strings.Contains(view, "feat - feat") {
 		t.Fatalf("expected selected worktree suggestion, got %q", view)
 	}
 }
 
 func TestViewWorktreeCreateNew(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeWorktree
 	m.core.WorktreeQuery = "feature-x"
 	m.worktreeInput.SetValue("feature-x")
@@ -96,7 +121,7 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	m.core.WorktreeIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "create") || !strings.Contains(view, "feature-x") {
+	if !strings.Contains(view, "create  feature-x") {
 		t.Fatalf("expected create new worktree hint, got %q", view)
 	}
 }
@@ -117,6 +142,7 @@ func TestViewEmptyState(t *testing.T) {
 
 func TestViewWorktreeDeleteConfirm(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeWorktreeDeleteConfirm
 	m.core.WorktreeDeletePath = "/repo/feature"
 
@@ -134,6 +160,7 @@ func TestViewWorktreeDeleteConfirm(t *testing.T) {
 
 func TestViewToolSuggestionAndNav(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeTool
 	m.core.ToolQuery = "amp"
 	m.toolInput.SetValue("amp")
@@ -151,6 +178,7 @@ func TestViewToolSuggestionAndNav(t *testing.T) {
 
 func TestViewToolNoCreateNew(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeTool
 	m.core.ToolQuery = "missing"
 	m.toolInput.SetValue("missing")
@@ -158,13 +186,29 @@ func TestViewToolNoCreateNew(t *testing.T) {
 	m.core.ToolIdx = 0
 
 	view := stripANSI(m.View())
-	if strings.Contains(view, "create new") {
-		t.Fatalf("did not expect create new hint, got %q", view)
+	if !strings.Contains(view, "No matches") {
+		t.Fatalf("expected empty state, got %q", view)
+	}
+}
+
+func TestViewEmptyState(t *testing.T) {
+	m := newTestModel()
+	m.height = 25
+	m.core.Mode = core.ModeBrowsing
+	m.core.Query = "missing"
+	m.input.SetValue("missing")
+	m.core.Filtered = nil
+	m.core.SelectedIdx = 0
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "No matches") {
+		t.Fatalf("expected empty state to mention no matches, got %q", view)
 	}
 }
 
 func TestViewToolStarting(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeToolStarting
 	m.core.PendingSpec = &core.SessionSpec{Tool: "opencode"}
 
@@ -176,6 +220,7 @@ func TestViewToolStarting(t *testing.T) {
 
 func TestViewError(t *testing.T) {
 	m := newTestModel()
+	m.height = 25
 	m.core.Mode = core.ModeError
 	m.core.Err = errTest("boom")
 
@@ -260,6 +305,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			m := newTestModel()
+			m.height = 25
 			m.core.Mode = test.mode
 			if test.setup != nil {
 				test.setup(&m)
@@ -291,6 +337,7 @@ func TestViewStepHeaders(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			m := newTestModel()
+			m.height = 25
 			m.core.Mode = test.mode
 			if test.mode == core.ModeWorktreeDeleteConfirm {
 				m.core.WorktreeDeletePath = "/repo/feature"

@@ -2,6 +2,9 @@ package ui
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ariguillegp/solo/internal/core"
@@ -33,6 +36,7 @@ type Model struct {
 	showHelp            bool
 	prevThemeIdx        int
 	prevStyles          Styles
+	homeDir             string
 }
 
 func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Model {
@@ -50,6 +54,8 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
+	homeDir, _ := os.UserHomeDir()
+
 	allThemes := Themes()
 	return Model{
 		core:          core.NewModel(roots),
@@ -64,7 +70,33 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		themes:        allThemes,
 		themeIdx:      0,
 		styles:        NewStyles(allThemes[0]),
+		homeDir:       homeDir,
 	}
+}
+
+func (m Model) displayPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+
+	home := strings.TrimSpace(m.homeDir)
+	if home == "" {
+		return path
+	}
+
+	home = filepath.Clean(home)
+	cleaned := filepath.Clean(path)
+	if cleaned == home {
+		return "~"
+	}
+
+	prefix := home + string(filepath.Separator)
+	if strings.HasPrefix(cleaned, prefix) {
+		return "~/" + strings.TrimPrefix(cleaned, prefix)
+	}
+
+	return path
 }
 
 func (m Model) Init() tea.Cmd {
