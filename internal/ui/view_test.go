@@ -103,8 +103,8 @@ func TestViewWorktreeSuggestionAndNav(t *testing.T) {
 	m.core.WorktreeIdx = 1
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "Select worktree or create new branch") {
-		t.Fatalf("expected worktree prompt, got %q", view)
+	if !strings.Contains(view, "Select workspace or create new branch") {
+		t.Fatalf("expected workspace prompt, got %q", view)
 	}
 	if !strings.Contains(view, "feat - feat") {
 		t.Fatalf("expected selected worktree suggestion, got %q", view)
@@ -122,7 +122,7 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 
 	view := stripANSI(m.View())
 	if !strings.Contains(view, "create  feature-x") {
-		t.Fatalf("expected create new worktree hint, got %q", view)
+		t.Fatalf("expected create new workspace hint, got %q", view)
 	}
 }
 
@@ -133,7 +133,7 @@ func TestViewWorktreeDeleteConfirm(t *testing.T) {
 	m.core.WorktreeDeletePath = "/repo/feature"
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "Delete Worktree") {
+	if !strings.Contains(view, "Delete Workspace") {
 		t.Fatalf("expected delete prompt, got %q", view)
 	}
 	if !strings.Contains(view, "/repo/feature") {
@@ -314,8 +314,8 @@ func TestViewStepHeaders(t *testing.T) {
 		header string
 	}{
 		{"browsing", core.ModeBrowsing, "Step 1: Select Project"},
-		{"worktree", core.ModeWorktree, "Step 2: Select Worktree"},
-		{"worktree delete", core.ModeWorktreeDeleteConfirm, "Delete Worktree"},
+		{"worktree", core.ModeWorktree, "Step 2: Select Workspace"},
+		{"worktree delete", core.ModeWorktreeDeleteConfirm, "Delete Workspace"},
 		{"tool", core.ModeTool, "Step 3: Select Tool"},
 		{"sessions", core.ModeSessions, "Active tmux sessions"},
 	}
