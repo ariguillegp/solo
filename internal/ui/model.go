@@ -348,7 +348,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
-		if msg.err != nil && errors.Is(msg.err, core.ErrWorktreeExists) {
+		if msg.err != nil && (errors.Is(msg.err, core.ErrWorktreeExists) || errors.Is(msg.err, core.ErrInvalidWorktreeName)) {
 			m.worktreeInput.Focus()
 			cmd := m.runEffects(effects)
 			return m, cmd

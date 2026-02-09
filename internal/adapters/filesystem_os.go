@@ -248,12 +248,12 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 	if cleanBranch == "" {
 		return "", fmt.Errorf("branch name cannot be empty")
 	}
+	if !core.IsValidWorktreeName(cleanBranch) {
+		return "", core.ErrInvalidWorktreeName
+	}
 
 	projectName := filepath.Base(projectPath)
 	sanitizedBranch := core.SanitizeWorktreeName(cleanBranch)
-	if strings.TrimSpace(sanitizedBranch) == "" {
-		return "", fmt.Errorf("worktree name cannot be empty")
-	}
 
 	soloDir := expandPath(soloWorktreesDir)
 	projectDir := filepath.Join(soloDir, projectName)
@@ -261,7 +261,7 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 		return "", err
 	}
 	_ = f.PruneWorktrees(projectPath)
-	worktreePath := filepath.Join(projectDir, sanitizedBranch)
+	worktreePath := filepath.Join(projectDir, filepath.FromSlash(sanitizedBranch))
 	if worktreePathTaken(projectPath, worktreePath) {
 		return "", fmt.Errorf("%w for branch %s", core.ErrWorktreeExists, cleanBranch)
 	}

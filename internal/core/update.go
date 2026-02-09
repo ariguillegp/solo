@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -81,6 +82,11 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 
 	case MsgWorktreeCreated:
 		if msg.Err != nil {
+			if errors.Is(msg.Err, ErrInvalidWorktreeName) {
+				m.Mode = ModeWorktree
+				m.ProjectWarning = "Worktree name must use only letters, numbers, '/', '-', and '_' characters. Please try again."
+				return m, nil
+			}
 			if errors.Is(msg.Err, ErrWorktreeExists) {
 				m.Mode = ModeWorktree
 				m.ProjectWarning = "Worktree already exists for that branch. Select it from the list."
@@ -286,6 +292,11 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 			m.SelectedWorktreePath = wt.Path
 			m, effects := enterToolMode(m)
 			return m, effects, true
+		}
+		name := strings.TrimSpace(m.WorktreeQuery)
+		if name != "" && !IsValidWorktreeName(name) {
+			m.ProjectWarning = "Worktree name must use only letters, numbers, '/', '-', and '_' characters. Please try again."
+			return m, nil, true
 		}
 		if name, ok := m.CreateWorktreeName(); ok {
 			return m, []Effect{EffCreateWorktree{

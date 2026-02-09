@@ -373,7 +373,7 @@ func (m Model) renderBreadcrumb() string {
 		items = append(items, m.renderBreadcrumbItem("Project", filepath.Base(m.core.SelectedProject)))
 	}
 	if m.core.SelectedWorktreePath != "" {
-		items = append(items, m.renderBreadcrumbItem("Workspace", filepath.Base(m.core.SelectedWorktreePath)))
+		items = append(items, m.renderBreadcrumbItem("Workspace", m.worktreeBreadcrumbValue()))
 	}
 	if m.core.Mode == core.ModeTool || m.core.Mode == core.ModeToolStarting {
 		if tool, ok := m.core.SelectedTool(); ok {
@@ -390,6 +390,46 @@ func (m Model) renderBreadcrumb() string {
 
 func (m Model) renderBreadcrumbItem(label, value string) string {
 	return fmt.Sprintf("%s %s", m.styles.BreadcrumbLabel.Render(label+":"), m.styles.BreadcrumbValue.Render(value))
+}
+
+func (m Model) worktreeBreadcrumbValue() string {
+	if m.core.SelectedWorktreePath == "" {
+		return ""
+	}
+	selectedPath := filepath.Clean(m.core.SelectedWorktreePath)
+	for _, wt := range m.core.Worktrees {
+		if filepath.Clean(wt.Path) == selectedPath && strings.TrimSpace(wt.Branch) != "" {
+			return wt.Branch
+		}
+	}
+	if fallback := worktreePathSuffix(m.core.SelectedProject, selectedPath); fallback != "" {
+		return fallback
+	}
+	return filepath.Base(selectedPath)
+}
+
+func worktreePathSuffix(projectPath, worktreePath string) string {
+	projectName := filepath.Base(projectPath)
+	if projectName == "" || projectName == "." || projectName == string(filepath.Separator) {
+		return ""
+	}
+	parts := strings.Split(filepath.Clean(worktreePath), string(filepath.Separator))
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] != "worktrees" {
+			continue
+		}
+		if i == 0 || parts[i-1] != ".solo" {
+			continue
+		}
+		if i+1 >= len(parts) || parts[i+1] != projectName {
+			continue
+		}
+		if i+2 >= len(parts) {
+			return ""
+		}
+		return strings.Join(parts[i+2:], "/")
+	}
+	return ""
 }
 
 func (m Model) renderCount(window suggestionWindow) string {

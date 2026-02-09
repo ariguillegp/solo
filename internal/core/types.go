@@ -92,7 +92,33 @@ func ToolNeedsWarmup(tool string) bool {
 }
 
 func SanitizeWorktreeName(name string) string {
-	clean := strings.ReplaceAll(name, "/", "-")
-	clean = strings.ReplaceAll(clean, " ", "-")
+	clean := strings.ReplaceAll(name, " ", "-")
 	return clean
+}
+
+func IsValidWorktreeName(name string) bool {
+	if strings.TrimSpace(name) == "" {
+		return false
+	}
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") {
+		return false
+	}
+	if strings.Contains(name, "//") {
+		return false
+	}
+	for _, segment := range strings.Split(name, "/") {
+		if segment == "." || segment == ".." || segment == "" {
+			return false
+		}
+	}
+	for i := 0; i < len(name); i++ {
+		ch := name[i]
+		if ch == '/' || ch == '-' || ch == '_' {
+			continue
+		}
+		if (ch < '0' || ch > '9') && (ch < 'A' || ch > 'Z') && (ch < 'a' || ch > 'z') {
+			return false
+		}
+	}
+	return true
 }

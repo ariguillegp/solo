@@ -115,13 +115,13 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	m := newTestModel()
 	m.height = 25
 	m.core.Mode = core.ModeWorktree
-	m.core.WorktreeQuery = "feature-x"
-	m.worktreeInput.SetValue("feature-x")
+	m.core.WorktreeQuery = "feature/test"
+	m.worktreeInput.SetValue("feature/test")
 	m.core.FilteredWT = nil
 	m.core.WorktreeIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "create  feature-x") {
+	if !strings.Contains(view, "create  feature/test") {
 		t.Fatalf("expected create new worktree hint, got %q", view)
 	}
 }

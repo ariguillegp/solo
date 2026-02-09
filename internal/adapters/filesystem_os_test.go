@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -40,9 +41,12 @@ func TestCreateWorktreeCreatesUnderSoloDir(t *testing.T) {
 		t.Fatalf("expected worktree under %s, got %s", soloDir, worktreePath)
 	}
 
+	if filepath.Dir(worktreePath) != filepath.Join(soloDir, "feature") {
+		t.Fatalf("expected worktree dir to be %q, got %q", filepath.Join(soloDir, "feature"), filepath.Dir(worktreePath))
+	}
 	wtName := filepath.Base(worktreePath)
-	if wtName != "feature-test" {
-		t.Fatalf("expected worktree name to be %q, got %q", "feature-test", wtName)
+	if wtName != "test" {
+		t.Fatalf("expected worktree name to be %q, got %q", "test", wtName)
 	}
 
 	if _, err := os.Stat(worktreePath); err != nil {
@@ -72,6 +76,20 @@ func TestCreateWorktreeRejectsExistingBranch(t *testing.T) {
 		t.Fatal("expected error when creating duplicate branch worktree")
 	}
 	if !strings.Contains(err.Error(), core.ErrWorktreeExists.Error()) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateWorktreeRejectsInvalidName(t *testing.T) {
+	projectPath := t.TempDir()
+	initRepo(t, projectPath)
+
+	fs := &OSFilesystem{}
+	_, err := fs.CreateWorktree(projectPath, "feature@bad")
+	if err == nil {
+		t.Fatal("expected error when creating worktree with invalid name")
+	}
+	if !errors.Is(err, core.ErrInvalidWorktreeName) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -197,7 +215,7 @@ func TestDeleteProjectRemovesRootAndWorktrees(t *testing.T) {
 	initRepo(t, projectPath)
 
 	fs := &OSFilesystem{}
-	worktreePath, err := fs.CreateWorktree(projectPath, "feature/delete-project")
+	worktreePath, err := fs.CreateWorktree(projectPath, "feature/deleteproject")
 	if err != nil {
 		t.Fatalf("unexpected error creating worktree: %v", err)
 	}
