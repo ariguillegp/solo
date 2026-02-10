@@ -2,6 +2,8 @@ package adapters
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/ariguillegp/solo/internal/core"
-	"github.com/google/uuid"
 )
 
 type OSFilesystem struct{}
@@ -195,8 +196,10 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 	}
 
 	projectName := filepath.Base(projectPath)
+	projectID := projectWorktreePrefix(projectPath)
 	soloDir := expandPath(soloWorktreesDir)
-	prefix := projectName + "--"
+	prefix := projectID + "--"
+	legacyPrefix := projectName + "--"
 
 	var worktrees []core.Worktree
 	var current core.Worktree
@@ -227,16 +230,13 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 		wtClean := filepath.Clean(wt.Path)
 		isRoot := wtClean == filepath.Clean(projectPath)
 		isUnderSolo := strings.HasPrefix(wtClean, soloDir+string(filepath.Separator)) &&
-			strings.HasPrefix(filepath.Base(wtClean), prefix)
+			(strings.HasPrefix(filepath.Base(wtClean), prefix) || strings.HasPrefix(filepath.Base(wtClean), legacyPrefix))
 
 		if !isRoot && !isUnderSolo {
 			continue
 		}
 
 		wt.Name = filepath.Base(wt.Path)
-		if wt.Branch == "" {
-			wt.Branch = wt.Name
-		}
 		filtered = append(filtered, wt)
 	}
 
@@ -254,10 +254,25 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 		return "", fmt.Errorf("branch name cannot be empty")
 	}
 
-	projectName := filepath.Base(projectPath)
+	projectID := projectWorktreePrefix(projectPath)
 	sanitizedBranch := core.SanitizeWorktreeName(cleanBranch)
-	shortUUID := uuid.New().String()[:8]
-	worktreeDir := fmt.Sprintf("%s--%s--%s", projectName, sanitizedBranch, shortUUID)
+	if sanitizedBranch == "" {
+		return "", fmt.Errorf("branch name cannot be empty")
+	}
+	worktreeDir := fmt.Sprintf("%s--%s", projectID, sanitizedBranch)
+
+	listing, err := f.ListWorktrees(projectPath)
+	if err != nil {
+		return "", err
+	}
+	for _, wt := range listing.Worktrees {
+		if strings.TrimSpace(wt.Branch) == cleanBranch {
+			return "", fmt.Errorf("worktree already exists for branch %s", cleanBranch)
+		}
+		if sanitizedBranch != "" && core.SanitizeWorktreeName(wt.Branch) == sanitizedBranch {
+			return "", fmt.Errorf("worktree already exists for branch %s", cleanBranch)
+		}
+	}
 
 	soloDir := expandPath(soloWorktreesDir)
 	if err := os.MkdirAll(soloDir, 0755); err != nil {
@@ -363,4 +378,12 @@ func repoHasCommit(repoPath string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func projectWorktreePrefix(projectPath string) string {
+	cleanPath := filepath.Clean(projectPath)
+	projectName := filepath.Base(cleanPath)
+	hasher := sha1.Sum([]byte(cleanPath))
+	suffix := hex.EncodeToString(hasher[:])[:6]
+	return fmt.Sprintf("%s-%s", projectName, suffix)
 }

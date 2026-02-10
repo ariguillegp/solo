@@ -234,14 +234,14 @@ func (m Model) View() string {
 		createRow := suggestionRow{}
 		if canCreate {
 			createLabel = createName
-			createRow = suggestionRow{primary: createName, actionLabel: "create"}
+			createRow = suggestionRow{primary: createLabel, actionLabel: "create"}
 		}
 		listLimit := m.listLimit()
 
 		if len(m.core.FilteredWT) > 0 {
 			rows := make([]suggestionRow, 0, len(m.core.FilteredWT)+1)
 			for _, wt := range m.core.FilteredWT {
-				rows = append(rows, suggestionRow{primary: wt.Name, detail: wt.Branch})
+				rows = append(rows, suggestionRow{primary: m.worktreeDisplayLabel(wt)})
 			}
 			if createLabel != "" {
 				rows = append(rows, createRow)
@@ -267,11 +267,16 @@ func (m Model) View() string {
 	case core.ModeWorktreeDeleteConfirm:
 		header = m.styles.DestructiveTitle.Render("⚠ Delete Workspace")
 		breadcrumb = m.renderBreadcrumb()
-		prompt := m.styles.DestructiveText.Render("This will delete the following workspace:")
+		labelText := m.worktreeBreadcrumbLabel()
+		if labelText == "" {
+			labelText = m.displayPath(m.core.WorktreeDeletePath)
+		}
+		label := m.styles.DestructiveText.Render("  " + labelText)
 		path := m.styles.DestructiveText.Render("  " + m.displayPath(m.core.WorktreeDeletePath))
+		prompt := m.styles.DestructiveText.Render("This will delete the following workspace:")
 		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
 		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
-		content = prompt + "\n\n" + path + "\n\n" + warning + "\n\n" + actions
+		content = prompt + "\n\n" + label + "\n" + path + "\n\n" + warning + "\n\n" + actions
 		helpLine = ""
 
 	case core.ModeTool:
@@ -373,7 +378,7 @@ func (m Model) renderBreadcrumb() string {
 		items = append(items, m.renderBreadcrumbItem("Project", filepath.Base(m.core.SelectedProject)))
 	}
 	if m.core.SelectedWorktreePath != "" {
-		items = append(items, m.renderBreadcrumbItem("Workspace", filepath.Base(m.core.SelectedWorktreePath)))
+		items = append(items, m.renderBreadcrumbItem("Workspace", m.worktreeBreadcrumbLabel()))
 	}
 	if m.core.Mode == core.ModeTool || m.core.Mode == core.ModeToolStarting {
 		if tool, ok := m.core.SelectedTool(); ok {
@@ -386,6 +391,31 @@ func (m Model) renderBreadcrumb() string {
 		return ""
 	}
 	return strings.Join(items, m.styles.Help.Render("  •  "))
+}
+
+func (m Model) worktreeBreadcrumbLabel() string {
+	if m.core.SelectedWorktreePath == "" {
+		return ""
+	}
+	selectedPath := filepath.Clean(m.core.SelectedWorktreePath)
+	for _, wt := range m.core.Worktrees {
+		if filepath.Clean(wt.Path) == selectedPath {
+			if wt.Branch != "" {
+				return wt.Branch
+			}
+			if wt.Name != "" {
+				return wt.Name
+			}
+		}
+	}
+	return filepath.Base(m.core.SelectedWorktreePath)
+}
+
+func (m Model) worktreeDisplayLabel(wt core.Worktree) string {
+	if wt.Branch != "" {
+		return wt.Branch
+	}
+	return wt.Name
 }
 
 func (m Model) renderBreadcrumbItem(label, value string) string {

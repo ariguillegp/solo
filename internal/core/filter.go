@@ -38,13 +38,15 @@ func FilterWorktrees(wts []Worktree, query string) []Worktree {
 	}
 
 	query = strings.ToLower(query)
+	querySanitized := strings.ToLower(SanitizeWorktreeName(query))
 	var result []Worktree
 
 	for _, wt := range wts {
 		name := strings.ToLower(wt.Name)
 		branch := strings.ToLower(wt.Branch)
+		branchSanitized := strings.ToLower(SanitizeWorktreeName(wt.Branch))
 
-		if fuzzyMatch(name, query) || fuzzyMatch(branch, query) {
+		if fuzzyMatch(name, query) || fuzzyMatch(branch, query) || (querySanitized != "" && fuzzyMatch(branchSanitized, querySanitized)) {
 			result = append(result, wt)
 		}
 	}

@@ -15,19 +15,16 @@ func SessionDisplayLabel(session SessionInfo) string {
 	}
 
 	project, branch := SessionWorktreeProjectBranch(worktreeName)
-	if project == "" {
-		project = worktreeName
+	project = trimProjectHash(project)
+	label := strings.TrimSpace(branch)
+	if strings.TrimSpace(project) != "" && strings.TrimSpace(branch) != "" {
+		label = fmt.Sprintf("%s/%s", project, branch)
 	}
-	if branch == "" {
-		branch = "main"
+	if label == "" {
+		label = worktreeName
 	}
-
-	label := fmt.Sprintf("%s--%s", project, branch)
 	if session.Tool != "" {
-		label = fmt.Sprintf("%s--%s", label, session.Tool)
-	}
-	if branch != "" {
-		label = fmt.Sprintf("%s [%s]", label, branch)
+		label = fmt.Sprintf("%s - %s", label, session.Tool)
 	}
 
 	return label
@@ -62,37 +59,31 @@ func SessionWorktreeProjectBranch(worktreeName string) (string, string) {
 		return "", ""
 	}
 
-	parts := strings.Split(worktreeName, "--")
-	if len(parts) == 1 {
+	idx := strings.LastIndex(worktreeName, "--")
+	if idx == -1 {
 		return worktreeName, ""
 	}
 
-	if len(parts) == 2 {
-		project := strings.TrimSpace(parts[0])
-		branch := strings.TrimSpace(parts[1])
-		return project, branch
-	}
-
-	if isShortUUIDPart(parts[len(parts)-1]) {
-		branch := strings.TrimSpace(parts[len(parts)-2])
-		project := strings.TrimSpace(strings.Join(parts[:len(parts)-2], "--"))
-		return project, branch
-	}
-
-	project := strings.TrimSpace(strings.Join(parts[:len(parts)-1], "--"))
-	branch := strings.TrimSpace(parts[len(parts)-1])
+	project := strings.TrimSpace(worktreeName[:idx])
+	branch := strings.TrimSpace(worktreeName[idx+len("--"):])
 	return project, branch
 }
 
-func isShortUUIDPart(part string) bool {
-	if len(part) != 8 {
-		return false
+func trimProjectHash(project string) string {
+	project = strings.TrimSpace(project)
+	if len(project) < 8 {
+		return project
 	}
-	for i := 0; i < len(part); i++ {
-		ch := part[i]
+	sepIdx := len(project) - 7
+	if project[sepIdx] != '-' {
+		return project
+	}
+	suffix := project[sepIdx+1:]
+	for i := 0; i < len(suffix); i++ {
+		ch := suffix[i]
 		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
-			return false
+			return project
 		}
 	}
-	return true
+	return project[:sepIdx]
 }

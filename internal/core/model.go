@@ -112,8 +112,15 @@ func (m Model) CreateWorktreeName() (string, bool) {
 	if name == "" {
 		return "", false
 	}
+	sanitized := SanitizeWorktreeName(name)
+	if sanitized == "" {
+		return "", false
+	}
 	for _, wt := range m.Worktrees {
-		if wt.Name == name || wt.Branch == name {
+		if wt.Branch == name {
+			return "", false
+		}
+		if sanitized != "" && SanitizeWorktreeName(wt.Branch) == sanitized {
 			return "", false
 		}
 	}

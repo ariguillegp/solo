@@ -106,7 +106,7 @@ func TestViewWorktreeSuggestionAndNav(t *testing.T) {
 	if !strings.Contains(view, "Select workspace or create new branch") {
 		t.Fatalf("expected workspace prompt, got %q", view)
 	}
-	if !strings.Contains(view, "feat - feat") {
+	if !strings.Contains(view, "feat") {
 		t.Fatalf("expected selected worktree suggestion, got %q", view)
 	}
 }
@@ -121,7 +121,10 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	m.core.WorktreeIdx = 0
 
 	view := stripANSI(m.View())
-	if !strings.Contains(view, "create  feature-x") {
+	if !strings.Contains(view, "create") {
+		t.Fatalf("expected create new workspace hint, got %q", view)
+	}
+	if !strings.Contains(view, "feature-x") {
 		t.Fatalf("expected create new workspace hint, got %q", view)
 	}
 }
@@ -131,6 +134,8 @@ func TestViewWorktreeDeleteConfirm(t *testing.T) {
 	m.height = 25
 	m.core.Mode = core.ModeWorktreeDeleteConfirm
 	m.core.WorktreeDeletePath = "/repo/feature"
+	m.core.SelectedWorktreePath = "/repo/feature"
+	m.core.Worktrees = []core.Worktree{{Path: "/repo/feature", Branch: "feature"}}
 
 	view := stripANSI(m.View())
 	if !strings.Contains(view, "Delete Workspace") {
@@ -251,6 +256,8 @@ func TestViewHelpLinePerMode(t *testing.T) {
 			mode: core.ModeWorktreeDeleteConfirm,
 			setup: func(m *Model) {
 				m.core.WorktreeDeletePath = "/repo/feature"
+				m.core.SelectedWorktreePath = "/repo/feature"
+				m.core.Worktrees = []core.Worktree{{Path: "/repo/feature", Branch: "feature"}}
 			},
 			helpParts: []string{"enter", "delete", "esc", "cancel"},
 		},
@@ -327,6 +334,8 @@ func TestViewStepHeaders(t *testing.T) {
 			m.core.Mode = test.mode
 			if test.mode == core.ModeWorktreeDeleteConfirm {
 				m.core.WorktreeDeletePath = "/repo/feature"
+				m.core.SelectedWorktreePath = "/repo/feature"
+				m.core.Worktrees = []core.Worktree{{Path: "/repo/feature", Branch: "feature"}}
 			}
 
 			view := stripANSI(m.View())

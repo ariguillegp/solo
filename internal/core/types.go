@@ -92,6 +92,10 @@ func ToolNeedsWarmup(tool string) bool {
 }
 
 func SanitizeWorktreeName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
 	clean := strings.ReplaceAll(name, "/", "-")
 	clean = strings.ReplaceAll(clean, " ", "-")
 	return clean
