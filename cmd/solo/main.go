@@ -25,7 +25,7 @@ func main() {
 	var detachFlag bool
 	flag.StringVar(&projectFlag, "project", "", "Project container name or path")
 	flag.StringVar(&worktreeFlag, "worktree", "", "Worktree name or path")
-	flag.StringVar(&toolFlag, "tool", "", "Tool to run (opencode, amp, claude, or none)")
+	flag.StringVar(&toolFlag, "tool", "", "Tool to run (opencode, amp, claude, codex, or none)")
 	flag.BoolVar(&createProjectFlag, "create-project", false, "Create the project container if missing")
 	flag.BoolVar(&detachFlag, "detach", false, "Create the tmux session without attaching")
 	flag.Parse()

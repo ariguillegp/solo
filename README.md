@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/4d98a9ac-4e05-4ca3-857e-e670c1a9d65a
 ## Features
 
 - Fuzzy search across project containers and git worktrees
-- Launch tmux sessions running `opencode`, `amp`, `claude`, or `none`
+- Launch tmux sessions running `opencode`, `amp`, `claude`, `codex`, or `none`
 - Keyboard-driven navigation
 - Delete entire projects (including all worktrees) with confirmation
 - Theme picker to customize the UI
@@ -30,7 +30,7 @@ https://github.com/user-attachments/assets/4d98a9ac-4e05-4ca3-857e-e670c1a9d65a
 
 - tmux
 - git
-- `opencode`, `amp`, and/or `claude` (optional for `none` sessions)
+- `opencode`, `amp`, `claude`, and/or `codex` (optional for `none` sessions)
 
 ## Installation
 
@@ -105,6 +105,8 @@ Open a session directly without the UI:
 solo --project my-project --worktree main --tool opencode [--detach]
 
 solo --project my-project --worktree main --tool claude [--detach]
+
+solo --project my-project --worktree main --tool codex [--detach]
 
 solo --project my-project --worktree main --tool none [--detach]
 ```

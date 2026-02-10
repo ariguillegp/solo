@@ -50,6 +50,7 @@ var toolDefinitions = []ToolDefinition{
 	},
 	{Name: "claude"},
 	{Name: "amp"},
+	{Name: "codex"},
 	{Name: ToolNone},
 }
 
