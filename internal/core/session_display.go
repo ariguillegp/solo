@@ -15,6 +15,7 @@ func SessionDisplayLabel(session SessionInfo) string {
 	}
 
 	project, branch := SessionWorktreeProjectBranch(worktreeName)
+	project = trimProjectHash(project)
 	label := strings.TrimSpace(branch)
 	if strings.TrimSpace(project) != "" && strings.TrimSpace(branch) != "" {
 		label = fmt.Sprintf("%s/%s", project, branch)
@@ -66,4 +67,23 @@ func SessionWorktreeProjectBranch(worktreeName string) (string, string) {
 	project := strings.TrimSpace(worktreeName[:idx])
 	branch := strings.TrimSpace(worktreeName[idx+len("--"):])
 	return project, branch
+}
+
+func trimProjectHash(project string) string {
+	project = strings.TrimSpace(project)
+	if len(project) < 8 {
+		return project
+	}
+	sepIdx := len(project) - 7
+	if project[sepIdx] != '-' {
+		return project
+	}
+	suffix := project[sepIdx+1:]
+	for i := 0; i < len(suffix); i++ {
+		ch := suffix[i]
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
+			return project
+		}
+	}
+	return project[:sepIdx]
 }

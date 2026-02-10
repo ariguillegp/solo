@@ -37,9 +37,9 @@ func TestCreateWorktreeCreatesUnderSoloDir(t *testing.T) {
 		t.Fatalf("expected worktree under %s, got %s", soloDir, worktreePath)
 	}
 
-	projectName := filepath.Base(projectPath)
+	projectPrefix := projectWorktreePrefix(projectPath)
 	wtName := filepath.Base(worktreePath)
-	expectedName := projectName + "--feature-test"
+	expectedName := projectPrefix + "--feature-test"
 	if wtName != expectedName {
 		t.Fatalf("expected worktree name %q, got %q", expectedName, wtName)
 	}
@@ -72,6 +72,35 @@ func TestCreateWorktreeRejectsDuplicateBranch(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "worktree already exists") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateWorktreeUsesUniquePrefixPerProject(t *testing.T) {
+	root := t.TempDir()
+	projectA := filepath.Join(root, "client", "api")
+	projectB := filepath.Join(root, "personal", "api")
+	initRepo(t, projectA)
+	initRepo(t, projectB)
+
+	fs := &OSFilesystem{}
+	wtA, err := fs.CreateWorktree(projectA, "feature-a")
+	if err != nil {
+		t.Fatalf("unexpected error creating worktree for project A: %v", err)
+	}
+	defer func() {
+		_ = fs.DeleteWorktree(projectA, wtA)
+	}()
+
+	wtB, err := fs.CreateWorktree(projectB, "feature-a")
+	if err != nil {
+		t.Fatalf("unexpected error creating worktree for project B: %v", err)
+	}
+	defer func() {
+		_ = fs.DeleteWorktree(projectB, wtB)
+	}()
+
+	if filepath.Base(wtA) == filepath.Base(wtB) {
+		t.Fatalf("expected distinct worktree directories, got %q", filepath.Base(wtA))
 	}
 }
 
@@ -305,8 +334,8 @@ func TestDeleteWorktreeRejectsUnregisteredWorktree(t *testing.T) {
 
 	home, _ := os.UserHomeDir()
 	soloDir := filepath.Join(home, ".solo", "worktrees")
-	projectName := filepath.Base(projectPath)
-	worktreePath := filepath.Join(soloDir, projectName+"--fake-branch")
+	projectPrefix := projectWorktreePrefix(projectPath)
+	worktreePath := filepath.Join(soloDir, projectPrefix+"--fake-branch")
 
 	if err := os.MkdirAll(worktreePath, 0755); err != nil {
 		t.Fatalf("unexpected error creating unregistered worktree: %v", err)

@@ -2,6 +2,8 @@ package adapters
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -194,8 +196,10 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 	}
 
 	projectName := filepath.Base(projectPath)
+	projectID := projectWorktreePrefix(projectPath)
 	soloDir := expandPath(soloWorktreesDir)
-	prefix := projectName + "--"
+	prefix := projectID + "--"
+	legacyPrefix := projectName + "--"
 
 	var worktrees []core.Worktree
 	var current core.Worktree
@@ -226,7 +230,7 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 		wtClean := filepath.Clean(wt.Path)
 		isRoot := wtClean == filepath.Clean(projectPath)
 		isUnderSolo := strings.HasPrefix(wtClean, soloDir+string(filepath.Separator)) &&
-			strings.HasPrefix(filepath.Base(wtClean), prefix)
+			(strings.HasPrefix(filepath.Base(wtClean), prefix) || strings.HasPrefix(filepath.Base(wtClean), legacyPrefix))
 
 		if !isRoot && !isUnderSolo {
 			continue
@@ -250,12 +254,12 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 		return "", fmt.Errorf("branch name cannot be empty")
 	}
 
-	projectName := filepath.Base(projectPath)
+	projectID := projectWorktreePrefix(projectPath)
 	sanitizedBranch := core.SanitizeWorktreeName(cleanBranch)
 	if sanitizedBranch == "" {
 		return "", fmt.Errorf("branch name cannot be empty")
 	}
-	worktreeDir := fmt.Sprintf("%s--%s", projectName, sanitizedBranch)
+	worktreeDir := fmt.Sprintf("%s--%s", projectID, sanitizedBranch)
 
 	listing, err := f.ListWorktrees(projectPath)
 	if err != nil {
@@ -374,4 +378,12 @@ func repoHasCommit(repoPath string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func projectWorktreePrefix(projectPath string) string {
+	cleanPath := filepath.Clean(projectPath)
+	projectName := filepath.Base(cleanPath)
+	hasher := sha1.Sum([]byte(cleanPath))
+	suffix := hex.EncodeToString(hasher[:])[:6]
+	return fmt.Sprintf("%s-%s", projectName, suffix)
 }
