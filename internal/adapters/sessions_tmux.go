@@ -93,7 +93,7 @@ func (t *TmuxSession) ListSessions() ([]core.SessionInfo, error) {
 		if name == "" {
 			continue
 		}
-		if name == "rivet-launcher" {
+		if name == "rv-launcher" || name == "rivet-launcher" {
 			continue
 		}
 		sessionPath := ""

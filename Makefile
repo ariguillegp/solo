@@ -7,7 +7,7 @@ validate:
 
 deploy:
 	mkdir -p ~/.local/bin
-	go build -o ~/.local/bin/rivet ./cmd/rivet
+	go build -o ~/.local/bin/rv ./cmd/rv
 
 install:
 	mkdir -p ~/Projects

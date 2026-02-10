@@ -44,57 +44,57 @@ $ make install
 
 ### Recommended way
 
-Create keybindings to run this tool from your regular shell environment and from inside tmux sessions. If are you are not using `~/Projects/` as your base directory for your project repositories, you will need to run `rivet YOUR_BASE_DIR` to find out the repos you wanna work on.
+Create keybindings to run this tool from your regular shell environment and from inside tmux sessions. If are you are not using `~/Projects/` as your base directory for your project repositories, you will need to run `rv YOUR_BASE_DIR` to find out the repos you wanna work on.
 
 **Bash**
 
 Add the following line to your `~/.bashrc`
 
 ```bash
-bind -x '"\C-f": "rivet YOUR_BASE_DIR"'
+bind -x '"\C-f": "rv YOUR_BASE_DIR"'
 ```
 
 **tmux**
 
-Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `rivet` from a tmux session
+Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `rv` from a tmux session
 
 ```tmux
-bind-key f run-shell "tmux has-session -t rivet-launcher 2>/dev/null && tmux kill-session -t rivet-launcher; tmux new-session -d -s rivet-launcher 'bash -lc \"rivet YOUR_BASE_DIR\"'; tmux switch-client -t rivet-launcher"
+bind-key f run-shell "tmux has-session -t rv-launcher 2>/dev/null && tmux kill-session -t rv-launcher; tmux new-session -d -s rv-launcher 'bash -lc \"rv YOUR_BASE_DIR\"'; tmux switch-client -t rv-launcher"
 ```
 
-This launches rivet in a temporary tmux session to keep your current session clean.
+This launches rv in a temporary tmux session to keep your current session clean.
 
 **Zsh**
 
 Add the following line to your `~/.zshrc`
 
 ```bash
-bindkey -s '^f' 'rivet YOUR_BASE_DIR\n'
+bindkey -s '^f' 'rv YOUR_BASE_DIR\n'
 ```
 
 **tmux**
 
-Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `rivet` from a tmux session
+Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `rv` from a tmux session
 
 ```tmux
-bind-key f run-shell "tmux has-session -t rivet-launcher 2>/dev/null && tmux kill-session -t rivet-launcher; tmux new-session -d -s rivet-launcher 'zsh -lc \"rivet YOUR_BASE_DIR\"'; tmux switch-client -t rivet-launcher"
+bind-key f run-shell "tmux has-session -t rv-launcher 2>/dev/null && tmux kill-session -t rv-launcher; tmux new-session -d -s rv-launcher 'zsh -lc \"rv YOUR_BASE_DIR\"'; tmux switch-client -t rv-launcher"
 ```
 
-This launches rivet in a temporary tmux session to keep your current session clean.
+This launches rv in a temporary tmux session to keep your current session clean.
 
 ### Interactive launch
 
 ```bash
-rivet [directories...]
+rv [directories...]
 ```
 
 Rivet starts tools directly inside tmux sessions using your default shell, so no
 login shell flags are required.
 
-By default, rivet scans `~/Projects` (personal preference). Pass custom directories as arguments:
+By default, rv scans `~/Projects` (personal preference). Pass custom directories as arguments:
 
 ```bash
-rivet ~/projects ~/work
+rv ~/projects ~/work
 ```
 
 ### Non-Interactive Launch
@@ -102,19 +102,19 @@ rivet ~/projects ~/work
 Open a session directly without the UI:
 
 ```bash
-rivet --project my-project --worktree main --tool opencode [--detach]
+rv --project my-project --worktree main --tool opencode [--detach]
 
-rivet --project my-project --worktree main --tool claude [--detach]
+rv --project my-project --worktree main --tool claude [--detach]
 
-rivet --project my-project --worktree main --tool codex [--detach]
+rv --project my-project --worktree main --tool codex [--detach]
 
-rivet --project my-project --worktree main --tool none [--detach]
+rv --project my-project --worktree main --tool none [--detach]
 ```
 
 Create a new project non-interactively:
 
 ```bash
-rivet --project my-project --worktree main --tool opencode --create-project
+rv --project my-project --worktree main --tool opencode --create-project
 ```
 
 ### Theme Picker
