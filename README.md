@@ -4,13 +4,16 @@ A lightweight TUI to manage your fleet of agents across all your projects.
 
 ## Main Features at a Glance
 
-- Guided 3-step workflow: pick a project, pick/create a workspace (git worktree), then launch a tool.
+- Guided 3-step workflow: pick a project, pick/create a workspace (git worktree), then launch a tool (`opencode`, `amp`, `claude`, `codex`, or `none`).
 - Fast fuzzy filtering in every step (projects, workspaces, tools, and sessions).
 - Built-in tmux session switcher: press `ctrl+s` from the main screens to open **Active tmux sessions**, filter them, and press `enter` to attach.
 - Warm-start support for tool sessions, plus session reuse/caching for quicker reopen flows.
 - Project/workspace lifecycle management in-app (create and delete with confirmation and cleanup).
+- Stale worktree references (from manually deleted directories) are automatically pruned whenever the worktree list is loaded, keeping the list accurate.
 - Keyboard-first UX with help modal (`?`) and theme picker (`ctrl+t`).
 - Optional non-interactive mode for launching sessions directly via CLI flags.
+- Theme picker to customize the UI
+- Help bar at the bottom for better discoverability
 
 ## Run agent tool in worktree (session caching)
 After selecting a project/worktree tuple, the program automatically opens new sessions for tools that benefit from warm starts.
@@ -27,21 +30,12 @@ Deleting a project also kills any sessions using it.
 
 https://github.com/user-attachments/assets/4d98a9ac-4e05-4ca3-857e-e670c1a9d65a
 
-## Features
-
-- Fuzzy search across project containers and git worktrees
-- Launch tmux sessions running `opencode`, `amp`, `claude`, `codex`, or `none`
-- Open the active tmux sessions view from most screens with `ctrl+s`, then attach with `enter`
-- Keyboard-driven navigation
-- Delete entire projects (including all worktrees) with confirmation
-- Theme picker to customize the UI
-- Help bar at the bottom for better discoverability
-
 ## Prerequisites
 
 - tmux
 - git
 - `opencode`, `amp`, `claude`, and/or `codex` (optional for `none` sessions)
+- Projects must be valid git repositories. The tool by default will look for projects under `~/Projects` and additional worktrees will be created under `~/.rivet/worktrees/`
 
 ## Installation
 
@@ -127,18 +121,6 @@ Create a new project non-interactively:
 ```bash
 rv --project my-project --worktree main --tool opencode --create-project
 ```
-
-### Theme Picker
-
-Press `ctrl+t` to open the theme picker and choose from the available themes. The
-selected theme updates UI colors across the app.
-
-### Project Layout
-
-Rivet expects projects to be valid git repositories, which by default will be found under `~/Projects` and additional worktrees will be created under `~/.rivet/worktrees/`
-
-Stale worktree references (from manually deleted directories) are automatically
-pruned whenever the worktree list is loaded, keeping the list accurate.
 
 ## Acknowledgments
 
