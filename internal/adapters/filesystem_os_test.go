@@ -1,11 +1,14 @@
 package adapters
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ariguillegp/rivet/internal/core"
 )
 
 func TestCreateWorktreeFailsWithoutGitRepo(t *testing.T) {
@@ -72,6 +75,9 @@ func TestCreateWorktreeRejectsDuplicateBranch(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "worktree already exists") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if !errors.Is(err, core.ErrWorktreeExists) {
+		t.Fatalf("expected ErrWorktreeExists, got %v", err)
 	}
 }
 

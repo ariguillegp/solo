@@ -33,6 +33,7 @@ type Model struct {
 	WorktreeDeletePath   string
 	ProjectDeletePath    string
 	ProjectWarning       string
+	WorktreeWarning      string
 	Worktrees            []Worktree
 	FilteredWT           []Worktree
 	WorktreeIdx          int

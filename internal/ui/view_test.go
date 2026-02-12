@@ -119,6 +119,7 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	m.worktreeInput.SetValue("feature-x")
 	m.core.FilteredWT = nil
 	m.core.WorktreeIdx = 0
+	m.core.WorktreeWarning = "worktree already exists for branch feature-x"
 
 	view := stripANSI(m.View())
 	if !strings.Contains(view, "create") {
@@ -126,6 +127,9 @@ func TestViewWorktreeCreateNew(t *testing.T) {
 	}
 	if !strings.Contains(view, "feature-x") {
 		t.Fatalf("expected create new workspace hint, got %q", view)
+	}
+	if !strings.Contains(view, "worktree already exists") {
+		t.Fatalf("expected worktree warning to be shown, got %q", view)
 	}
 }
 

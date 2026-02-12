@@ -267,10 +267,10 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 	}
 	for _, wt := range listing.Worktrees {
 		if strings.TrimSpace(wt.Branch) == cleanBranch {
-			return "", fmt.Errorf("worktree already exists for branch %s", cleanBranch)
+			return "", core.WorktreeExistsError{Branch: cleanBranch}
 		}
 		if sanitizedBranch != "" && core.SanitizeWorktreeName(wt.Branch) == sanitizedBranch {
-			return "", fmt.Errorf("worktree already exists for branch %s", cleanBranch)
+			return "", core.WorktreeExistsError{Branch: cleanBranch}
 		}
 	}
 
@@ -292,9 +292,15 @@ func (f *OSFilesystem) CreateWorktree(projectPath, branchName string) (string, e
 	cmd := gitCommand(projectPath, "worktree", "add", "-b", cleanBranch, worktreePath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		if bytes.Contains(output, []byte("already exists")) && bytes.Contains(output, []byte(cleanBranch)) {
+			return "", core.WorktreeExistsError{Branch: cleanBranch}
+		}
 		cmd = gitCommand(projectPath, "worktree", "add", "--orphan", "-b", cleanBranch, worktreePath)
 		output2, err2 := cmd.CombinedOutput()
 		if err2 != nil {
+			if bytes.Contains(output2, []byte("already exists")) && bytes.Contains(output2, []byte(cleanBranch)) {
+				return "", core.WorktreeExistsError{Branch: cleanBranch}
+			}
 			return "", fmt.Errorf("%s: %s", err2, string(output2))
 		}
 		return worktreePath, nil

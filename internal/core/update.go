@@ -37,6 +37,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		m.WorktreeQuery = ""
 		m.WorktreeIdx = 0
 		m.ProjectWarning = ""
+		m.WorktreeWarning = ""
 		return m, []Effect{EffLoadWorktrees{ProjectPath: msg.ProjectPath}}
 
 	case MsgProjectDeleted:
@@ -55,6 +56,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		m.ProjectWarning = ""
 		m.SelectedWorktreePath = ""
 		m.WorktreeDeletePath = ""
+		m.WorktreeWarning = ""
 		return m, []Effect{EffScanDirs{Roots: m.RootPaths}}
 
 	case MsgWorktreesLoaded:
@@ -64,6 +66,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 			return m, nil
 		}
 		m.ProjectWarning = msg.Warning
+		m.WorktreeWarning = ""
 		m.Worktrees = msg.Worktrees
 		m.FilteredWT = FilterWorktrees(m.Worktrees, m.WorktreeQuery)
 		m.WorktreeIdx = 0
@@ -71,17 +74,24 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 
 	case MsgWorktreeQueryChanged:
 		m.WorktreeQuery = msg.Query
+		m.WorktreeWarning = ""
 		m.FilteredWT = FilterWorktrees(m.Worktrees, m.WorktreeQuery)
 		m.WorktreeIdx = 0
 		return m, nil
 
 	case MsgWorktreeCreated:
 		if msg.Err != nil {
+			if IsWorktreeExistsError(msg.Err) {
+				m.Mode = ModeWorktree
+				m.WorktreeWarning = msg.Err.Error()
+				return m, nil
+			}
 			m.Mode = ModeError
 			m.Err = msg.Err
 			return m, nil
 		}
 		m.SelectedWorktreePath = msg.Path
+		m.WorktreeWarning = ""
 		return enterToolMode(m)
 
 	case MsgWorktreeDeleted:
@@ -92,6 +102,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		}
 		m.Mode = ModeWorktree
 		m.WorktreeDeletePath = ""
+		m.WorktreeWarning = ""
 		return m, []Effect{EffLoadWorktrees{ProjectPath: m.SelectedProject}}
 
 	case MsgToolQueryChanged:
@@ -279,6 +290,7 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 			return m, effects, true
 		}
 		if name, ok := m.CreateWorktreeName(); ok {
+			m.WorktreeWarning = ""
 			return m, []Effect{EffCreateWorktree{
 				ProjectPath: m.SelectedProject,
 				BranchName:  name,
@@ -301,6 +313,7 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 		m.ProjectWarning = ""
 		m.SelectedWorktreePath = ""
 		m.WorktreeDeletePath = ""
+		m.WorktreeWarning = ""
 		return m, nil, true
 	case "ctrl+s":
 		return enterSessionsMode(m)
