@@ -161,6 +161,9 @@ func (m Model) View() string {
 	if m.showHelp {
 		return m.renderHelpModal()
 	}
+	if m.showThemePicker {
+		return m.renderThemePicker()
+	}
 
 	var content string
 	var helpLine string
@@ -465,6 +468,7 @@ func (m Model) renderHelpModal() string {
 			title: "Actions",
 			rows: []string{
 				m.renderHelpRow("ctrl+d", "delete project/workspace"),
+				m.renderHelpRow("ctrl+t", "open theme picker"),
 			},
 		},
 	}
@@ -481,6 +485,45 @@ func (m Model) renderHelpModal() string {
 
 	footer := m.styles.Help.Render("Press ? or esc to close")
 	content := header + "\n\n" + out.String() + "\n\n" + footer
+	boxStyle := m.styles.BoxWithWidth(m.width)
+	box := boxStyle.Render(content)
+
+	if m.height <= 0 || m.width <= 0 {
+		return box
+	}
+
+	return lipgloss.Place(
+		m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		box,
+	)
+}
+
+func (m Model) renderThemePicker() string {
+	header := m.styles.Title.Render("Theme Picker")
+	prompt := m.styles.Prompt.Render("Filter themes:")
+	input := prompt + " " + m.themeInput.View()
+
+	rows := make([]suggestionRow, 0, len(m.filteredThemes))
+	for _, theme := range m.filteredThemes {
+		rows = append(rows, suggestionRow{primary: theme.Name})
+	}
+
+	listLimit := m.listLimit()
+	var content string
+	if len(rows) > 0 {
+		list, window := m.renderSuggestionList(rows, m.themeIdx, listLimit)
+		count := m.renderCount(window)
+		content = input + "\n" + list + count
+	} else {
+		content = input + "\n" + m.styles.EmptyState.Render("No matching themes.")
+	}
+
+	help := m.renderHelpLine([]struct{ key, desc string }{
+		{"enter", "apply"}, {"esc", "cancel"},
+	})
+	content = header + "\n\n" + content + "\n\n" + help
+
 	boxStyle := m.styles.BoxWithWidth(m.width)
 	box := boxStyle.Render(content)
 

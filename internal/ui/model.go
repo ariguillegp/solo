@@ -21,6 +21,7 @@ type Model struct {
 	worktreeInput       textinput.Model
 	toolInput           textinput.Model
 	sessionInput        textinput.Model
+	themeInput          textinput.Model
 	spinner             spinner.Model
 	fs                  ports.Filesystem
 	sessions            ports.SessionManager
@@ -30,7 +31,13 @@ type Model struct {
 	SelectedSpec        *core.SessionSpec
 	SelectedSessionName string
 	styles              Styles
+	themes              []Theme
+	filteredThemes      []Theme
+	activeThemeIdx      int
+	themeIdx            int
+	themePickerPrevIdx  int
 	showHelp            bool
+	showThemePicker     bool
 	homeDir             string
 }
 
@@ -45,6 +52,8 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	tti.Prompt = ""
 	sti := textinput.New()
 	sti.Prompt = ""
+	thi := textinput.New()
+	thi.Prompt = ""
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -53,18 +62,132 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 
 	allThemes := Themes()
 	return Model{
-		core:          core.NewModel(roots),
-		input:         ti,
-		worktreeInput: wti,
-		toolInput:     tti,
-		sessionInput:  sti,
-		spinner:       sp,
-		fs:            fs,
-		sessions:      sessions,
-		maxDepth:      2,
-		styles:        NewStyles(allThemes[0]),
-		homeDir:       homeDir,
+		core:               core.NewModel(roots),
+		input:              ti,
+		worktreeInput:      wti,
+		toolInput:          tti,
+		sessionInput:       sti,
+		themeInput:         thi,
+		spinner:            sp,
+		fs:                 fs,
+		sessions:           sessions,
+		maxDepth:           2,
+		styles:             NewStyles(allThemes[0]),
+		themes:             allThemes,
+		filteredThemes:     allThemes,
+		activeThemeIdx:     0,
+		themeIdx:           0,
+		themePickerPrevIdx: 0,
+		homeDir:            homeDir,
 	}
+}
+
+func (m *Model) blurInputs() {
+	m.input.Blur()
+	m.worktreeInput.Blur()
+	m.toolInput.Blur()
+	m.sessionInput.Blur()
+	m.themeInput.Blur()
+}
+
+func (m *Model) restoreInputFocus() {
+	switch m.core.Mode {
+	case core.ModeBrowsing:
+		m.input.Focus()
+	case core.ModeWorktree:
+		m.worktreeInput.Focus()
+	case core.ModeTool:
+		m.toolInput.Focus()
+	case core.ModeSessions:
+		m.sessionInput.Focus()
+	}
+}
+
+func (m *Model) openThemePicker() {
+	if len(m.themes) == 0 {
+		return
+	}
+
+	m.showThemePicker = true
+	m.showHelp = false
+	m.themePickerPrevIdx = m.activeThemeIdx
+	m.themeInput.SetValue("")
+	m.filteredThemes = m.themes
+	m.themeIdx = indexOfThemeByName(m.filteredThemes, m.themes[m.activeThemeIdx].Name)
+	if m.themeIdx < 0 {
+		m.themeIdx = 0
+	}
+	m.blurInputs()
+	m.themeInput.Focus()
+}
+
+func (m *Model) closeThemePicker(apply bool) {
+	if !apply {
+		m.applyThemeByIndex(m.themePickerPrevIdx)
+	}
+	m.showThemePicker = false
+	m.themeInput.SetValue("")
+	m.filteredThemes = m.themes
+	m.themeIdx = 0
+	m.themeInput.Blur()
+	m.restoreInputFocus()
+}
+
+func (m *Model) applyThemeByIndex(themeIdx int) {
+	if themeIdx < 0 || themeIdx >= len(m.themes) {
+		return
+	}
+	m.activeThemeIdx = themeIdx
+	m.styles = NewStyles(m.themes[themeIdx])
+}
+
+func (m *Model) applyThemeSelection() {
+	if len(m.filteredThemes) == 0 || m.themeIdx < 0 || m.themeIdx >= len(m.filteredThemes) {
+		return
+	}
+	selected := m.filteredThemes[m.themeIdx]
+	idx := indexOfThemeByName(m.themes, selected.Name)
+	if idx < 0 {
+		return
+	}
+	m.applyThemeByIndex(idx)
+}
+
+func (m *Model) previewSelectedTheme() {
+	if len(m.filteredThemes) == 0 || m.themeIdx < 0 || m.themeIdx >= len(m.filteredThemes) {
+		return
+	}
+	selected := m.filteredThemes[m.themeIdx]
+	idx := indexOfThemeByName(m.themes, selected.Name)
+	if idx < 0 {
+		return
+	}
+	m.applyThemeByIndex(idx)
+}
+
+func (m *Model) refreshThemeFilter() {
+	m.filteredThemes = FilterThemes(m.themes, m.themeInput.Value())
+	if len(m.filteredThemes) == 0 {
+		m.themeIdx = 0
+		return
+	}
+	activeName := m.themes[m.activeThemeIdx].Name
+	idx := indexOfThemeByName(m.filteredThemes, activeName)
+	if idx < 0 {
+		m.themeIdx = 0
+	} else {
+		m.themeIdx = idx
+	}
+	m.previewSelectedTheme()
+}
+
+func indexOfThemeByName(themes []Theme, name string) int {
+	for i, theme := range themes {
+		if theme.Name == name {
+			return i
+		}
+	}
+	return -1
 }
 
 func (m Model) displayPath(path string) string {
@@ -137,12 +260,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if m.showThemePicker {
+			switch key {
+			case "esc":
+				m.closeThemePicker(false)
+				return m, nil
+			case "enter":
+				m.applyThemeSelection()
+				m.closeThemePicker(true)
+				return m, nil
+			case "up", "ctrl+k":
+				if m.themeIdx > 0 {
+					m.themeIdx--
+					m.previewSelectedTheme()
+				}
+				return m, nil
+			case "down", "ctrl+j":
+				if m.themeIdx < len(m.filteredThemes)-1 {
+					m.themeIdx++
+					m.previewSelectedTheme()
+				}
+				return m, nil
+			case "ctrl+c":
+				return m, tea.Quit
+			}
+
+			var cmd tea.Cmd
+			m.themeInput, cmd = m.themeInput.Update(msg)
+			m.refreshThemeFilter()
+			return m, cmd
+		}
+
 		if key == "?" && m.core.Mode != core.ModeLoading {
 			m.showHelp = true
-			m.input.Blur()
-			m.worktreeInput.Blur()
-			m.toolInput.Blur()
-			m.sessionInput.Blur()
+			m.blurInputs()
+			return m, nil
+		}
+
+		if key == "ctrl+t" && m.core.Mode != core.ModeLoading {
+			m.openThemePicker()
 			return m, nil
 		}
 
@@ -181,9 +337,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.worktreeInput.Blur()
 		}
 		if prevMode != core.ModeSessions && m.core.Mode == core.ModeSessions {
-			m.input.Blur()
-			m.worktreeInput.Blur()
-			m.toolInput.Blur()
+			m.blurInputs()
 			m.sessionInput.SetValue("")
 			m.sessionInput.Focus()
 		}

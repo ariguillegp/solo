@@ -317,6 +317,26 @@ func TestViewHelpLinePerMode(t *testing.T) {
 	}
 }
 
+func TestViewThemePicker(t *testing.T) {
+	m := newTestModel()
+	m.height = 25
+	m.showThemePicker = true
+	m.filteredThemes = []Theme{{Name: "Gruvbox"}, {Name: "Dracula"}}
+	m.themeIdx = 1
+	m.themeInput.SetValue("dra")
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "Theme Picker") {
+		t.Fatalf("expected theme picker header, got %q", view)
+	}
+	if !strings.Contains(view, "Filter themes") {
+		t.Fatalf("expected theme picker prompt, got %q", view)
+	}
+	if !strings.Contains(view, "Dracula") {
+		t.Fatalf("expected theme list to include Dracula, got %q", view)
+	}
+}
+
 func TestViewStepHeaders(t *testing.T) {
 	tests := []struct {
 		name   string
