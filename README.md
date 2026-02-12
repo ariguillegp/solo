@@ -18,17 +18,17 @@ A lightweight TUI to manage your fleet of agents across all your projects.
 ## Run agent tool in worktree (session caching)
 After selecting a project/worktree tuple, the program automatically opens new sessions for tools that benefit from warm starts.
 
-https://github.com/user-attachments/assets/5d8f25d3-4344-4801-ab51-fb3d00b22c23
+https://github.com/user-attachments/assets/d0d314d5-413f-4480-b6aa-0523587ff8cc
 
 ## Create/Delete worktree
 Deleting a worktree also kills any session using it.
 
-https://github.com/user-attachments/assets/1d38e6ff-1a80-4322-802b-6f117ae1a05f
+https://github.com/user-attachments/assets/39cfb6ba-c9df-4652-a9ba-b4ef3fe3aeeb
 
 ## Create/Delete project
 Deleting a project also kills any sessions using it.
 
-https://github.com/user-attachments/assets/4d98a9ac-4e05-4ca3-857e-e670c1a9d65a
+https://github.com/user-attachments/assets/bc3ebf0f-1152-40af-98df-d198e5638302
 
 ## Prerequisites
 
