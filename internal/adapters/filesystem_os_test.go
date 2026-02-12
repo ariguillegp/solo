@@ -190,6 +190,9 @@ func TestDeleteWorktreeRejectsProjectRoot(t *testing.T) {
 	if !strings.Contains(err.Error(), "cannot delete the project root") {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if !errors.Is(err, core.ErrWorktreeDeleteRoot) {
+		t.Fatalf("expected ErrWorktreeDeleteRoot, got %v", err)
+	}
 }
 
 func TestDeleteWorktreeRejectsPathsOutsideRivetDir(t *testing.T) {
@@ -203,8 +206,11 @@ func TestDeleteWorktreeRejectsPathsOutsideRivetDir(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when deleting outside rivet dir")
 	}
-	if !strings.Contains(err.Error(), "can only delete worktrees under") {
+	if !strings.Contains(err.Error(), "outside the managed") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if !errors.Is(err, core.ErrWorktreeDeleteOutsideRoot) {
+		t.Fatalf("expected ErrWorktreeDeleteOutsideRoot, got %v", err)
 	}
 }
 
@@ -357,6 +363,9 @@ func TestDeleteWorktreeRejectsUnregisteredWorktree(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "not registered") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if !errors.Is(err, core.ErrWorktreeUnregistered) {
+		t.Fatalf("expected ErrWorktreeUnregistered, got %v", err)
 	}
 }
 

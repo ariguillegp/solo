@@ -96,6 +96,12 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 
 	case MsgWorktreeDeleted:
 		if msg.Err != nil {
+			if IsRecoverableWorktreeDeleteError(msg.Err) {
+				m.Mode = ModeWorktree
+				m.WorktreeDeletePath = ""
+				m.WorktreeWarning = msg.Err.Error()
+				return m, nil
+			}
 			m.Mode = ModeError
 			m.Err = msg.Err
 			return m, nil
@@ -301,6 +307,7 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 		if wt, ok := m.SelectedWorktree(); ok {
 			m.Mode = ModeWorktreeDeleteConfirm
 			m.WorktreeDeletePath = wt.Path
+			m.WorktreeWarning = ""
 			return m, nil, true
 		}
 		return m, nil, true

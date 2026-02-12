@@ -258,10 +258,10 @@ func (m Model) View() string {
 		}
 
 		if m.core.ProjectWarning != "" {
-			content += "\n" + m.styles.Warning.Render(m.core.ProjectWarning)
+			content += "\n" + m.styles.Warning.Render("⚠ "+m.core.ProjectWarning)
 		}
 		if m.core.WorktreeWarning != "" {
-			content += "\n" + m.styles.Warning.Render(m.core.WorktreeWarning)
+			content += "\n" + m.styles.Warning.Render("⚠ "+m.core.WorktreeWarning)
 		}
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{
 			{"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+s", "sessions"}, {"?", "help"}, {"esc", "back"},

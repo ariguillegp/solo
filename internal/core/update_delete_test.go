@@ -177,6 +177,24 @@ func TestMsgWorktreeDeletedErrorSetsModeError(t *testing.T) {
 	}
 }
 
+func TestMsgWorktreeDeletedRecoverableErrorShowsWarning(t *testing.T) {
+	base := Model{Mode: ModeWorktreeDeleteConfirm}
+
+	updated, effects := Update(base, MsgWorktreeDeleted{Err: ErrWorktreeDeleteRoot})
+	if updated.Mode != ModeWorktree {
+		t.Fatalf("expected worktree mode, got %v", updated.Mode)
+	}
+	if updated.WorktreeDeletePath != "" {
+		t.Fatalf("expected delete path to be cleared, got %q", updated.WorktreeDeletePath)
+	}
+	if updated.WorktreeWarning == "" {
+		t.Fatalf("expected warning to be set")
+	}
+	if len(effects) != 0 {
+		t.Fatalf("expected no effects, got %d", len(effects))
+	}
+}
+
 func TestMsgWorktreeDeletedReloadsWorktrees(t *testing.T) {
 	base := Model{SelectedProject: "/projects/demo"}
 

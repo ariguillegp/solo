@@ -34,7 +34,6 @@ type Styles struct {
 }
 
 func NewStyles(theme Theme) Styles {
-	destructiveRed := lipgloss.Color("#ff5555")
 	return Styles{
 		Title: lipgloss.NewStyle().
 			Foreground(theme.Accent).
@@ -63,13 +62,13 @@ func NewStyles(theme Theme) Styles {
 		Warning: lipgloss.NewStyle().
 			Foreground(theme.Warning),
 		DestructiveTitle: lipgloss.NewStyle().
-			Foreground(destructiveRed).
+			Foreground(theme.Error).
 			Bold(true),
 		DestructiveText: lipgloss.NewStyle().
-			Foreground(destructiveRed),
+			Foreground(theme.Error),
 		DestructiveAction: lipgloss.NewStyle().
 			Foreground(theme.Text).
-			Background(destructiveRed).
+			Background(theme.Error).
 			Bold(true).
 			Padding(0, 1),
 		Action: lipgloss.NewStyle().

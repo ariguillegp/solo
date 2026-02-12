@@ -24,3 +24,18 @@ func (e WorktreeExistsError) Is(target error) bool {
 func IsWorktreeExistsError(err error) bool {
 	return errors.Is(err, ErrWorktreeExists)
 }
+
+// ErrWorktreeDeleteRoot marks attempts to delete the project root worktree.
+var ErrWorktreeDeleteRoot = errors.New("cannot delete the project root worktree")
+
+// ErrWorktreeDeleteOutsideRoot marks attempts to delete worktrees outside the managed directory.
+var ErrWorktreeDeleteOutsideRoot = errors.New("worktree is outside the managed directory")
+
+// ErrWorktreeUnregistered marks attempts to delete a worktree not registered in git.
+var ErrWorktreeUnregistered = errors.New("worktree is not registered")
+
+func IsRecoverableWorktreeDeleteError(err error) bool {
+	return errors.Is(err, ErrWorktreeDeleteRoot) ||
+		errors.Is(err, ErrWorktreeDeleteOutsideRoot) ||
+		errors.Is(err, ErrWorktreeUnregistered)
+}

@@ -332,16 +332,16 @@ func (f *OSFilesystem) DeleteWorktree(projectPath, worktreePath string) error {
 		return fmt.Errorf("worktree path cannot be empty")
 	}
 	if filepath.Clean(cleanPath) == filepath.Clean(projectPath) {
-		return fmt.Errorf("cannot delete the project root worktree")
+		return core.ErrWorktreeDeleteRoot
 	}
 
 	rivetDir := expandPath(rivetWorktreesDir)
 	if !strings.HasPrefix(cleanPath, rivetDir+string(filepath.Separator)) {
-		return fmt.Errorf("can only delete worktrees under %s", rivetWorktreesDir)
+		return fmt.Errorf("%w: %s", core.ErrWorktreeDeleteOutsideRoot, rivetWorktreesDir)
 	}
 
 	if !isRegisteredWorktree(projectPath, cleanPath) {
-		return fmt.Errorf("worktree is not registered in git worktree list")
+		return core.ErrWorktreeUnregistered
 	}
 
 	cmd := gitCommand(projectPath, "worktree", "remove", "--force", cleanPath)
