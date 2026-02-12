@@ -17,6 +17,7 @@ type Styles struct {
 	Help               lipgloss.Style
 	Key                lipgloss.Style
 	Prompt             lipgloss.Style
+	Body               lipgloss.Style
 	Error              lipgloss.Style
 	Warning            lipgloss.Style
 	DestructiveTitle   lipgloss.Style
@@ -57,15 +58,17 @@ func NewStyles(theme Theme) Styles {
 			Bold(true),
 		Prompt: lipgloss.NewStyle().
 			Foreground(theme.Accent),
+		Body: lipgloss.NewStyle().
+			Foreground(theme.Text),
 		Error: lipgloss.NewStyle().
 			Foreground(theme.Error),
 		Warning: lipgloss.NewStyle().
 			Foreground(theme.Warning),
 		DestructiveTitle: lipgloss.NewStyle().
-			Foreground(theme.Error).
+			Foreground(theme.Text).
 			Bold(true),
 		DestructiveText: lipgloss.NewStyle().
-			Foreground(theme.Error),
+			Foreground(theme.Text),
 		DestructiveAction: lipgloss.NewStyle().
 			Foreground(theme.Text).
 			Background(theme.Error).

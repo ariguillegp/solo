@@ -161,9 +161,6 @@ func (m Model) View() string {
 	if m.showHelp {
 		return m.renderHelpModal()
 	}
-	if m.showThemePicker {
-		return m.renderThemePicker()
-	}
 
 	var content string
 	var helpLine string
@@ -215,11 +212,11 @@ func (m Model) View() string {
 		})
 
 	case core.ModeProjectDeleteConfirm:
-		header = m.styles.DestructiveTitle.Render("⚠ Delete Project")
+		header = m.styles.Title.Render("⚠ Delete Project")
 		breadcrumb = m.renderBreadcrumb()
-		prompt := m.styles.DestructiveText.Render("This will delete the project and all workspaces:")
-		path := m.styles.DestructiveText.Render("  " + m.displayPath(m.core.ProjectDeletePath))
-		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
+		prompt := m.styles.Body.Render("This will delete the project and all workspaces:")
+		path := m.styles.Path.Render("  " + m.displayPath(m.core.ProjectDeletePath))
+		warning := m.styles.Body.Render("This action cannot be undone.")
 		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
 		content = prompt + "\n\n" + path + "\n\n" + warning + "\n\n" + actions
 		helpLine = ""
@@ -268,16 +265,16 @@ func (m Model) View() string {
 		})
 
 	case core.ModeWorktreeDeleteConfirm:
-		header = m.styles.DestructiveTitle.Render("⚠ Delete Workspace")
+		header = m.styles.Title.Render("⚠ Delete Workspace")
 		breadcrumb = m.renderBreadcrumb()
 		labelText := m.worktreeBreadcrumbLabel()
 		if labelText == "" {
 			labelText = m.displayPath(m.core.WorktreeDeletePath)
 		}
-		label := m.styles.DestructiveText.Render("  " + labelText)
-		path := m.styles.DestructiveText.Render("  " + m.displayPath(m.core.WorktreeDeletePath))
-		prompt := m.styles.DestructiveText.Render("This will delete the following workspace:")
-		warning := m.styles.DestructiveText.Render("This action cannot be undone.")
+		label := m.styles.Body.Render("  " + labelText)
+		path := m.styles.Path.Render("  " + m.displayPath(m.core.WorktreeDeletePath))
+		prompt := m.styles.Body.Render("This will delete the following workspace:")
+		warning := m.styles.Body.Render("This action cannot be undone.")
 		actions := m.styles.Key.Render("enter") + " " + m.styles.DestructiveAction.Render("delete") + "  " + m.styles.Key.Render("esc") + " " + m.styles.Help.Render("cancel")
 		content = prompt + "\n\n" + label + "\n" + path + "\n\n" + warning + "\n\n" + actions
 		helpLine = ""
@@ -433,45 +430,6 @@ func (m Model) renderCount(window suggestionWindow) string {
 	return "\n" + m.styles.Count.Render(line)
 }
 
-func (m Model) renderThemePicker() string {
-	header := m.styles.Title.Render("Select Theme")
-
-	var out strings.Builder
-	for i, theme := range m.themes {
-		prefix := "  "
-		if i == m.themeIdx {
-			prefix = "> "
-		}
-		var row string
-		if i == m.themeIdx {
-			row = m.styles.SelectedSuggestion.Render(prefix + theme.Name)
-		} else {
-			row = m.styles.Suggestion.Render(prefix + theme.Name)
-		}
-		if i > 0 {
-			out.WriteString("\n")
-		}
-		out.WriteString(row)
-	}
-
-	helpLine := m.renderHelpLine([]struct{ key, desc string }{{"enter", "select"}, {"esc", "cancel"}})
-
-	content := header + "\n\n" + out.String() + "\n\n" + helpLine
-
-	boxStyle := m.styles.BoxWithWidth(m.width)
-	box := boxStyle.Render(content)
-
-	if m.height <= 0 || m.width <= 0 {
-		return box
-	}
-
-	return lipgloss.Place(
-		m.width, m.height,
-		lipgloss.Center, lipgloss.Center,
-		box,
-	)
-}
-
 func (m Model) renderHelpModal() string {
 	header := m.styles.Title.Render("Help Menu")
 
@@ -507,7 +465,6 @@ func (m Model) renderHelpModal() string {
 			title: "Actions",
 			rows: []string{
 				m.renderHelpRow("ctrl+d", "delete project/workspace"),
-				m.renderHelpRow("ctrl+t", "theme picker"),
 			},
 		},
 	}

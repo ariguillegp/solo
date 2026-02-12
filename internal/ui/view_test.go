@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/ariguillegp/rivet/internal/core"
@@ -410,34 +409,6 @@ func TestViewNoScrollIndicatorsForShortList(t *testing.T) {
 	view := stripANSI(m.View())
 	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
 		t.Fatalf("did not expect scroll indicators for short list, got %q", view)
-	}
-}
-
-func TestThemePickerEscRestoresTheme(t *testing.T) {
-	m := newTestModel()
-	m.core.Mode = core.ModeBrowsing
-	m.themeIdx = 0
-	m.styles = NewStyles(m.themes[0])
-
-	model, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlT})
-	m = model.(Model)
-	if !m.showThemePicker {
-		t.Fatalf("expected theme picker to open")
-	}
-
-	model, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
-	m = model.(Model)
-	if m.themeIdx != 1 {
-		t.Fatalf("expected theme idx to move down, got %d", m.themeIdx)
-	}
-
-	model, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	m = model.(Model)
-	if m.showThemePicker {
-		t.Fatalf("expected theme picker to close")
-	}
-	if m.themeIdx != 0 {
-		t.Fatalf("expected theme idx to restore, got %d", m.themeIdx)
 	}
 }
 
