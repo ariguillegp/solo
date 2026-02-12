@@ -61,7 +61,7 @@ bind -x '"\C-f": "rv YOUR_BASE_DIR"'
 
 **tmux**
 
-Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `rv` from a tmux session
+Add the following line to your `~/.config/tmux/tmux.conf` so you can use `tmux-prefix + f` to launch `rv` from a tmux session
 
 ```tmux
 bind-key f run-shell "tmux has-session -t rv-launcher 2>/dev/null && tmux kill-session -t rv-launcher; tmux new-session -d -s rv-launcher 'bash -lc \"rv YOUR_BASE_DIR\"'; tmux switch-client -t rv-launcher"
@@ -79,7 +79,7 @@ bindkey -s '^f' 'rv YOUR_BASE_DIR\n'
 
 **tmux**
 
-Add the following line to your `~/.tmux.conf` so you can use `tmux-prefix + f` to launch `rv` from a tmux session
+Add the following line to your `~/.config/tmux/tmux.conf` so you can use `tmux-prefix + f` to launch `rv` from a tmux session
 
 ```tmux
 bind-key f run-shell "tmux has-session -t rv-launcher 2>/dev/null && tmux kill-session -t rv-launcher; tmux new-session -d -s rv-launcher 'zsh -lc \"rv YOUR_BASE_DIR\"'; tmux switch-client -t rv-launcher"
