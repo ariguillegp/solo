@@ -115,7 +115,7 @@ func (m Model) View() string {
 		breadcrumb = m.renderBreadcrumb()
 		if len(m.core.Sessions) == 0 {
 			content = m.styles.EmptyState.Render("No active sessions. Press esc to return.")
-			helpLine = m.shortHelpView()
+			helpLine = m.sessionsEmptyShortHelpView()
 			break
 		}
 		prompt := m.styles.Prompt.Render("Filter sessions:")

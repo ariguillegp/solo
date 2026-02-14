@@ -76,6 +76,10 @@ func (k keyMap) shortHelp(mode core.Mode) []key.Binding {
 	}
 }
 
+func (k keyMap) sessionsEmptyShortHelp() []key.Binding {
+	return []key.Binding{k.Toggle, k.Back}
+}
+
 func (k keyMap) fullHelp(mode core.Mode) [][]key.Binding {
 	common := [][]key.Binding{
 		{k.Up, k.Down, k.Select, k.Back, k.Quit},
@@ -102,6 +106,10 @@ func (k keyMap) binding(b key.Binding, desc string) key.Binding {
 
 func (m Model) shortHelpView() string {
 	return m.help.ShortHelpView(m.keymap.shortHelp(m.core.Mode))
+}
+
+func (m Model) sessionsEmptyShortHelpView() string {
+	return m.help.ShortHelpView(m.keymap.sessionsEmptyShortHelp())
 }
 
 func (m Model) fullHelpView() string {

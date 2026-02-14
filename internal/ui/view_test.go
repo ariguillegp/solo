@@ -324,6 +324,24 @@ func TestViewHelpLinePerMode(t *testing.T) {
 	}
 }
 
+func TestViewSessionsEmptyHelpOmitsAttach(t *testing.T) {
+	m := newTestModel()
+	m.height = 25
+	m.core.Mode = core.ModeSessions
+	m.core.Sessions = nil
+	m.core.FilteredSessions = nil
+
+	view := stripANSI(m.View())
+	if strings.Contains(view, "attach") {
+		t.Fatalf("expected empty sessions help to omit attach action, got %q", view)
+	}
+	for _, part := range []string{"?", "help", "esc", "back"} {
+		if !strings.Contains(view, part) {
+			t.Fatalf("expected empty sessions help to contain %q, got %q", part, view)
+		}
+	}
+}
+
 func TestViewThemePicker(t *testing.T) {
 	m := newTestModel()
 	m.height = 25
