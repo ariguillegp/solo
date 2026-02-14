@@ -65,13 +65,13 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
-	pr := progress.New(progress.WithDefaultGradient())
+	pr := progress.New(progress.WithoutPercentage())
 
 	homeDir, _ := os.UserHomeDir()
 
 	allThemes := Themes()
 	styles := NewStyles(allThemes[0])
-	return Model{
+	model := Model{
 		core:               core.NewModel(roots),
 		input:              ti,
 		worktreeInput:      wti,
@@ -95,6 +95,8 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		themePickerPrevIdx: 0,
 		homeDir:            homeDir,
 	}
+	model.syncProgressTheme(allThemes[0])
+	return model
 }
 
 func (m *Model) blurInputs() {
@@ -149,12 +151,19 @@ func (m *Model) closeThemePicker(apply bool) {
 	m.restoreInputFocus()
 }
 
+func (m *Model) syncProgressTheme(theme Theme) {
+	m.progress.FullColor = string(theme.Accent)
+	m.progress.EmptyColor = string(theme.Muted)
+}
+
 func (m *Model) applyThemeByIndex(themeIdx int) {
 	if themeIdx < 0 || themeIdx >= len(m.themes) {
 		return
 	}
+	theme := m.themes[themeIdx]
 	m.activeThemeIdx = themeIdx
-	m.styles = NewStyles(m.themes[themeIdx])
+	m.styles = NewStyles(theme)
+	m.syncProgressTheme(theme)
 	m.applyListStyles()
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 
@@ -216,6 +217,9 @@ func TestViewToolStarting(t *testing.T) {
 	if !strings.Contains(view, "2/4 tools ready") {
 		t.Fatalf("expected warmup status text, got %q", view)
 	}
+	if strings.Contains(view, "100%") {
+		t.Fatalf("expected progress bar without percentage text, got %q", view)
+	}
 }
 
 func TestViewError(t *testing.T) {
@@ -400,4 +404,36 @@ type errTest string
 
 func (e errTest) Error() string {
 	return string(e)
+}
+
+func TestToolStartingProgressUsesWarmupDelayFraction(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeToolStarting
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 2
+	m.core.PendingSpec = &core.SessionSpec{Tool: "amp"}
+	m.core.ToolWarmStart = map[string]time.Time{
+		"amp": time.Now().Add(-(toolReadyDelay / 2)),
+	}
+
+	progress := m.toolStartingProgress()
+	if progress <= 0.35 || progress >= 0.65 {
+		t.Fatalf("expected in-progress value around halfway, got %f", progress)
+	}
+}
+
+func TestToolStartingProgressCapsAtOneForExistingSession(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeToolStarting
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 4
+	m.core.PendingSpec = &core.SessionSpec{Tool: "amp"}
+	m.core.ToolWarmStart = map[string]time.Time{
+		"amp": {},
+	}
+
+	progress := m.toolStartingProgress()
+	if progress != 1 {
+		t.Fatalf("expected progress to be complete, got %f", progress)
+	}
 }

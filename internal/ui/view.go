@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -122,19 +123,10 @@ func (m Model) View() string {
 			readyCount = 0
 		}
 		total := m.core.ToolWarmupTotal
-		progressValue := 1.0
-		if total > 0 {
-			progressValue = float64(readyCount) / float64(total)
-		}
-		if progressValue < 0 {
-			progressValue = 0
-		}
-		if progressValue > 1 {
-			progressValue = 1
-		}
+		progressValue := m.toolStartingProgress()
 		status := fmt.Sprintf("%d/%d tools ready", readyCount, total)
 		bar := m.progress.ViewAs(progressValue)
-		content = fmt.Sprintf("%s Starting %s...\n\n%s\n%s", m.spinner.View(), toolName, bar, m.styles.Help.Render(status))
+		content = fmt.Sprintf("Starting %s...\n\n%s\n%s", toolName, bar, m.styles.Help.Render(status))
 		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "cancel"}, {"ctrl+c", "quit"}})
 
 	case core.ModeSessions:
@@ -179,6 +171,47 @@ func (m Model) View() string {
 	}
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+func clamp01(value float64) float64 {
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
+}
+
+func (m Model) toolStartingProgress() float64 {
+	total := m.core.ToolWarmupTotal
+	if total <= 0 {
+		return 1
+	}
+
+	completed := m.core.ToolWarmupCompleted
+	checksProgress := float64(completed) / float64(total)
+
+	if m.core.PendingSpec == nil || m.core.ToolWarmStart == nil {
+		return clamp01(checksProgress)
+	}
+
+	start, ok := m.core.ToolWarmStart[m.core.PendingSpec.Tool]
+	if !ok {
+		return clamp01(checksProgress)
+	}
+	if start.IsZero() {
+		return 1
+	}
+
+	elapsedFraction := float64(time.Since(start)) / float64(toolReadyDelay)
+	elapsedFraction = clamp01(elapsedFraction)
+
+	adjustedCompleted := completed - 1
+	if adjustedCompleted < 0 {
+		adjustedCompleted = 0
+	}
+	return clamp01((float64(adjustedCompleted) + elapsedFraction) / float64(total))
 }
 
 func (m Model) renderBreadcrumb() string {
