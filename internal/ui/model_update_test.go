@@ -56,7 +56,7 @@ func TestUpdateViewportScrollHandledInHelp(t *testing.T) {
 	m.updateViewportSize()
 	m.viewport.SetContent("line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11\nline12\nline13\nline14\nline15")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyDown})
 	next := updated.(Model)
 	if next.viewport.YOffset <= 0 {
 		t.Fatalf("expected viewport to scroll down, got offset %d", next.viewport.YOffset)
