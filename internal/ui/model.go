@@ -303,9 +303,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "ctrl+k", "down", "ctrl+j":
 				var cmd tea.Cmd
 				m.themeList, cmd = m.themeList.Update(msg)
-				cmds = append(cmds, cmd)
 				m.previewSelectedTheme()
-				return m, nil
+				return m, cmd
 			case "ctrl+c":
 				return m, tea.Quit
 			}
