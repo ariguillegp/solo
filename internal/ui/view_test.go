@@ -540,3 +540,26 @@ func TestToolStartingProgressStaysBelowOneWhileWaitingForOpen(t *testing.T) {
 		t.Fatalf("expected progress to stay below complete while opening session, got %f", progress)
 	}
 }
+
+func TestViewPaletteHiddenByDefault(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeBrowsing
+	m.core.Query = "proj"
+	m.input.SetValue("proj")
+
+	view := stripANSI(m.View())
+	if strings.Contains(view, "Action Palette") {
+		t.Fatalf("expected palette to be hidden by default, got %q", view)
+	}
+}
+
+func TestViewHelpMentionsAdvancedPaletteShortcut(t *testing.T) {
+	m := newTestModel()
+	m.showHelp = true
+	m.core.Mode = core.ModeBrowsing
+
+	view := stripANSI(m.View())
+	if !strings.Contains(view, "ctrl+p") || !strings.Contains(view, "palette (advanced)") {
+		t.Fatalf("expected help to include advanced palette shortcut, got %q", view)
+	}
+}

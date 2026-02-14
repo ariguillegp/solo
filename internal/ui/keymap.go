@@ -14,6 +14,7 @@ type keyMap struct {
 	Select   key.Binding
 	Delete   key.Binding
 	Sessions key.Binding
+	Palette  key.Binding
 	Toggle   key.Binding
 	Back     key.Binding
 	Quit     key.Binding
@@ -28,6 +29,7 @@ func newKeyMap() keyMap {
 		Select:   key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
 		Delete:   key.NewBinding(key.WithKeys("ctrl+d"), key.WithHelp("ctrl+d", "delete")),
 		Sessions: key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "sessions")),
+		Palette:  key.NewBinding(key.WithKeys("ctrl+p"), key.WithHelp("ctrl+p", "palette")),
 		Toggle:   key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		Back:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
 		Quit:     key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "quit")),
@@ -84,6 +86,7 @@ func (k keyMap) fullHelp(mode core.Mode) [][]key.Binding {
 	common := [][]key.Binding{
 		{k.Up, k.Down, k.Select, k.Back, k.Quit},
 		{k.Type, k.Toggle, k.Sessions, k.Delete, k.Theme},
+		{k.binding(k.Palette, "palette (advanced)")},
 	}
 	switch mode {
 	case core.ModeLoading, core.ModeError:

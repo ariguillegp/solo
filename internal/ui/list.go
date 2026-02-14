@@ -166,7 +166,7 @@ func toItems(rows []suggestionItem) []listmodel.Item {
 }
 
 func (m *Model) applyListStyles() {
-	lists := []*listmodel.Model{&m.projectList, &m.worktreeList, &m.toolList, &m.sessionList, &m.themeList}
+	lists := []*listmodel.Model{&m.projectList, &m.worktreeList, &m.toolList, &m.sessionList, &m.themeList, &m.paletteList}
 	for _, l := range lists {
 		l.SetDelegate(suggestionDelegate{styles: m.styles})
 		l.SetHeight(listHeight(m.listLimit(), len(l.Items())))

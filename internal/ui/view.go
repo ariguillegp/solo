@@ -20,6 +20,9 @@ func (m Model) View() string {
 	if m.showThemePicker {
 		return m.renderThemePicker()
 	}
+	if m.showPalette {
+		return m.renderPalette()
+	}
 
 	var content string
 	var helpLine string
@@ -256,6 +259,29 @@ func (m Model) renderThemePicker() string {
 	}
 
 	help := m.help.ShortHelpView([]key.Binding{m.keymap.binding(m.keymap.Select, "apply"), m.keymap.binding(m.keymap.Back, "cancel")})
+	content = header + "\n\n" + content + "\n\n" + help
+
+	boxStyle := m.styles.BoxWithWidth(m.width)
+	box := boxStyle.Render(content)
+	if m.height <= 0 || m.width <= 0 {
+		return box
+	}
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+func (m Model) renderPalette() string {
+	header := m.styles.Title.Render("Action Palette")
+	prompt := m.styles.Prompt.Render("Action:")
+	input := prompt + " " + m.paletteInput.View()
+
+	var content string
+	if len(m.paletteList.Items()) > 0 {
+		content = input + "\n" + m.paletteList.View() + m.renderCount(m.paletteList)
+	} else {
+		content = input + "\n" + m.styles.EmptyState.Render("No matching actions.")
+	}
+
+	help := m.help.ShortHelpView([]key.Binding{m.keymap.binding(m.keymap.Select, "run"), m.keymap.binding(m.keymap.Back, "close")})
 	content = header + "\n\n" + content + "\n\n" + help
 
 	boxStyle := m.styles.BoxWithWidth(m.width)

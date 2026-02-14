@@ -26,11 +26,13 @@ type Model struct {
 	toolInput            textinput.Model
 	sessionInput         textinput.Model
 	themeInput           textinput.Model
+	paletteInput         textinput.Model
 	projectList          listmodel.Model
 	worktreeList         listmodel.Model
 	toolList             listmodel.Model
 	sessionList          listmodel.Model
 	themeList            listmodel.Model
+	paletteList          listmodel.Model
 	spinner              spinner.Model
 	progress             progress.Model
 	toolStartingAt       time.Time
@@ -49,9 +51,19 @@ type Model struct {
 	themePickerPrevIdx   int
 	showHelp             bool
 	showThemePicker      bool
+	showPalette          bool
 	homeDir              string
 	help                 help.Model
 	keymap               keyMap
+	paletteActions       []paletteAction
+	filteredPalette      []paletteAction
+}
+
+type paletteAction struct {
+	label  string
+	filter string
+	key    core.KeyAction
+	theme  bool
 }
 
 func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Model {
@@ -67,6 +79,8 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	sti.Prompt = ""
 	thi := textinput.New()
 	thi.Prompt = ""
+	pi := textinput.New()
+	pi.Prompt = ""
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
@@ -86,11 +100,13 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		toolInput:          tti,
 		sessionInput:       sti,
 		themeInput:         thi,
+		paletteInput:       pi,
 		projectList:        newSuggestionList(styles),
 		worktreeList:       newSuggestionList(styles),
 		toolList:           newSuggestionList(styles),
 		sessionList:        newSuggestionList(styles),
 		themeList:          newSuggestionList(styles),
+		paletteList:        newSuggestionList(styles),
 		spinner:            sp,
 		progress:           pr,
 		fs:                 fs,
@@ -104,10 +120,19 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		homeDir:            homeDir,
 		help:               h,
 		keymap:             km,
+		paletteActions: []paletteAction{
+			{label: "Open Sessions", filter: "open sessions", key: core.KeySessions},
+			{label: "Pick Theme", filter: "pick theme", theme: true},
+			{label: "Delete Current", filter: "delete current", key: core.KeyDelete},
+			{label: "Back", filter: "back", key: core.KeyBack},
+			{label: "Quit", filter: "quit", key: core.KeyQuit},
+		},
 	}
+	m.filteredPalette = append([]paletteAction(nil), m.paletteActions...)
 	m.syncProgressTheme(allThemes[0])
 	m.applyHelpStyles()
 	m.applyListStyles()
+	m.syncPaletteList()
 	return m
 }
 
@@ -117,6 +142,7 @@ func (m *Model) blurInputs() {
 	m.toolInput.Blur()
 	m.sessionInput.Blur()
 	m.themeInput.Blur()
+	m.paletteInput.Blur()
 }
 
 func (m *Model) restoreInputFocus() {
@@ -161,6 +187,126 @@ func (m *Model) closeThemePicker(apply bool) {
 	m.themeList.Select(0)
 	m.themeInput.Blur()
 	m.restoreInputFocus()
+}
+
+func (m *Model) openPalette() {
+	m.showPalette = true
+	m.showHelp = false
+	m.paletteInput.SetValue("")
+	m.filteredPalette = append([]paletteAction(nil), m.paletteActions...)
+	m.syncPaletteList()
+	m.blurInputs()
+	m.paletteInput.Focus()
+}
+
+func (m *Model) closePalette() {
+	m.showPalette = false
+	m.paletteInput.SetValue("")
+	m.filteredPalette = append([]paletteAction(nil), m.paletteActions...)
+	m.syncPaletteList()
+	m.paletteInput.Blur()
+	m.restoreInputFocus()
+}
+
+func (m *Model) syncPaletteList() {
+	rows := make([]suggestionItem, 0, len(m.filteredPalette))
+	for _, action := range m.filteredPalette {
+		rows = append(rows, suggestionItem{primary: action.label})
+	}
+	m.paletteList.SetItems(toItems(rows))
+	m.paletteList.SetHeight(listHeight(m.listLimit(), len(rows)))
+	m.paletteList.Select(0)
+}
+
+func (m *Model) refreshPaletteFilter() {
+	query := strings.ToLower(strings.TrimSpace(m.paletteInput.Value()))
+	if query == "" {
+		m.filteredPalette = append([]paletteAction(nil), m.paletteActions...)
+		m.syncPaletteList()
+		return
+	}
+	filtered := make([]paletteAction, 0, len(m.paletteActions))
+	for _, action := range m.paletteActions {
+		if strings.Contains(action.filter, query) || strings.Contains(strings.ToLower(action.label), query) {
+			filtered = append(filtered, action)
+		}
+	}
+	m.filteredPalette = filtered
+	m.syncPaletteList()
+}
+
+func (m *Model) runCoreAction(action core.KeyAction) tea.Cmd {
+	prevMode := m.core.Mode
+	coreModel, effects, _ := core.UpdateKey(m.core, action)
+	m.core = coreModel
+	m.syncLists()
+	if spec := extractSessionSpec(effects); spec != nil {
+		m.SelectedSpec = spec
+	}
+
+	if prevMode == core.ModeBrowsing && m.core.Mode == core.ModeWorktree {
+		m.input.Blur()
+		m.worktreeInput.Focus()
+	}
+	if prevMode == core.ModeBrowsing && m.core.Mode == core.ModeProjectDeleteConfirm {
+		m.input.Blur()
+	}
+	if prevMode == core.ModeWorktree && m.core.Mode == core.ModeBrowsing {
+		m.worktreeInput.SetValue("")
+		m.worktreeInput.Blur()
+		m.input.Focus()
+	}
+	if prevMode == core.ModeWorktree && m.core.Mode == core.ModeTool {
+		m.worktreeInput.Blur()
+		m.toolInput.SetValue("")
+		m.toolInput.Focus()
+	}
+	if prevMode == core.ModeTool && m.core.Mode == core.ModeToolStarting {
+		m.toolInput.Blur()
+		m.beginToolStartingProgress(time.Now())
+	}
+	if prevMode == core.ModeToolStarting && m.core.Mode != core.ModeToolStarting {
+		if m.core.Mode == core.ModeTool {
+			m.toolInput.Focus()
+		}
+		m.toolStartingAt = time.Time{}
+		m.toolStartingDuration = 0
+	}
+	if prevMode == core.ModeWorktree && m.core.Mode == core.ModeWorktreeDeleteConfirm {
+		m.worktreeInput.Blur()
+	}
+	if prevMode != core.ModeSessions && m.core.Mode == core.ModeSessions {
+		m.blurInputs()
+		m.sessionInput.SetValue("")
+		m.sessionInput.Focus()
+	}
+	if prevMode == core.ModeSessions && m.core.Mode != core.ModeSessions {
+		m.sessionInput.SetValue("")
+		m.sessionInput.Blur()
+		if m.core.Mode == core.ModeBrowsing {
+			m.input.Focus()
+		}
+		if m.core.Mode == core.ModeWorktree {
+			m.worktreeInput.Focus()
+		}
+		if m.core.Mode == core.ModeTool {
+			m.toolInput.Focus()
+		}
+	}
+	if prevMode == core.ModeTool && m.core.Mode == core.ModeWorktree {
+		m.toolInput.SetValue("")
+		m.toolInput.Blur()
+		m.worktreeInput.Focus()
+	}
+	if prevMode == core.ModeWorktreeDeleteConfirm && m.core.Mode == core.ModeWorktree {
+		m.worktreeInput.Focus()
+	}
+	if prevMode == core.ModeProjectDeleteConfirm && m.core.Mode == core.ModeBrowsing {
+		m.input.Focus()
+	}
+
+	m.syncLists()
+	return m.runEffects(effects)
 }
 
 func (m *Model) syncProgressTheme(theme Theme) {
@@ -333,6 +479,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		if m.showPalette {
+			switch {
+			case key.Matches(msg, m.keymap.Back), key.Matches(msg, m.keymap.Palette):
+				m.closePalette()
+				return m, nil
+			case key.Matches(msg, m.keymap.Up, m.keymap.Down):
+				var cmd tea.Cmd
+				m.paletteList, cmd = m.paletteList.Update(msg)
+				return m, cmd
+			case key.Matches(msg, m.keymap.Select):
+				idx := m.paletteList.Index()
+				if idx < 0 || idx >= len(m.filteredPalette) {
+					return m, nil
+				}
+				selected := m.filteredPalette[idx]
+				m.closePalette()
+				if selected.theme {
+					m.openThemePicker()
+					return m, nil
+				}
+				return m, m.runCoreAction(selected.key)
+			case key.Matches(msg, m.keymap.Quit):
+				return m, tea.Quit
+			}
+
+			var cmd tea.Cmd
+			m.paletteInput, cmd = m.paletteInput.Update(msg)
+			m.refreshPaletteFilter()
+			return m, cmd
+		}
+
 		if key.Matches(msg, m.keymap.Toggle) && m.core.Mode != core.ModeLoading {
 			m.showHelp = true
 			m.blurInputs()
@@ -344,81 +521,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		prevMode := m.core.Mode
+		if key.Matches(msg, m.keymap.Palette) && m.core.Mode != core.ModeLoading {
+			m.openPalette()
+			return m, nil
+		}
 
 		action, mapped := m.keymap.actionForCore(msg)
-		coreModel, effects, handled := core.UpdateKey(m.core, action)
+		if mapped {
+			return m, m.runCoreAction(action)
+		}
+
 		if !mapped {
-			handled = false
-		}
-		m.core = coreModel
-		m.syncLists()
-		if spec := extractSessionSpec(effects); spec != nil {
-			m.SelectedSpec = spec
-		}
-
-		if prevMode == core.ModeBrowsing && m.core.Mode == core.ModeWorktree {
-			m.input.Blur()
-			m.worktreeInput.Focus()
-		}
-		if prevMode == core.ModeBrowsing && m.core.Mode == core.ModeProjectDeleteConfirm {
-			m.input.Blur()
-		}
-		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeBrowsing {
-			m.worktreeInput.SetValue("")
-			m.worktreeInput.Blur()
-			m.input.Focus()
-		}
-		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeTool {
-			m.worktreeInput.Blur()
-			m.toolInput.SetValue("")
-			m.toolInput.Focus()
-		}
-		if prevMode == core.ModeTool && m.core.Mode == core.ModeToolStarting {
-			m.toolInput.Blur()
-			m.beginToolStartingProgress(time.Now())
-		}
-		if prevMode == core.ModeToolStarting && m.core.Mode != core.ModeToolStarting {
-			if m.core.Mode == core.ModeTool {
-				m.toolInput.Focus()
-			}
-			m.toolStartingAt = time.Time{}
-			m.toolStartingDuration = 0
-		}
-		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeWorktreeDeleteConfirm {
-			m.worktreeInput.Blur()
-		}
-		if prevMode != core.ModeSessions && m.core.Mode == core.ModeSessions {
-			m.blurInputs()
-			m.sessionInput.SetValue("")
-			m.sessionInput.Focus()
-		}
-		if prevMode == core.ModeSessions && m.core.Mode != core.ModeSessions {
-			m.sessionInput.SetValue("")
-			m.sessionInput.Blur()
-			if m.core.Mode == core.ModeBrowsing {
-				m.input.Focus()
-			}
-			if m.core.Mode == core.ModeWorktree {
-				m.worktreeInput.Focus()
-			}
-			if m.core.Mode == core.ModeTool {
-				m.toolInput.Focus()
-			}
-		}
-		if prevMode == core.ModeTool && m.core.Mode == core.ModeWorktree {
-			m.toolInput.SetValue("")
-			m.toolInput.Blur()
-			m.worktreeInput.Focus()
-		}
-		if prevMode == core.ModeWorktreeDeleteConfirm && m.core.Mode == core.ModeWorktree {
-			m.worktreeInput.Focus()
-		}
-		if prevMode == core.ModeProjectDeleteConfirm && m.core.Mode == core.ModeBrowsing {
-			m.input.Focus()
-		}
-
-		if !handled {
 			var cmd tea.Cmd
 			switch m.core.Mode {
 			case core.ModeBrowsing:
@@ -453,7 +566,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.syncLists()
-		cmds = append(cmds, m.runEffects(effects))
 		return m, tea.Batch(cmds...)
 
 	case scanCompletedMsg:
