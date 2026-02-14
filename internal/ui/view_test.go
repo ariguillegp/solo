@@ -505,12 +505,8 @@ func (e errTest) Error() string {
 func TestToolStartingProgressUsesWarmupDelayFraction(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeToolStarting
-	m.core.ToolWarmupTotal = 4
-	m.core.ToolWarmupCompleted = 2
-	m.core.PendingSpec = &core.SessionSpec{Tool: "amp"}
-	m.core.ToolWarmStart = map[string]time.Time{
-		"amp": time.Now().Add(-(toolReadyDelay / 2)),
-	}
+	m.toolStartingAt = time.Now().Add(-(toolReadyDelay / 2))
+	m.toolStartingDuration = toolReadyDelay
 
 	progress := m.toolStartingProgress()
 	if progress <= 0.35 || progress >= 0.65 {
@@ -521,12 +517,8 @@ func TestToolStartingProgressUsesWarmupDelayFraction(t *testing.T) {
 func TestToolStartingProgressStaysBelowOneForExistingSession(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeToolStarting
-	m.core.ToolWarmupTotal = 4
-	m.core.ToolWarmupCompleted = 4
-	m.core.PendingSpec = &core.SessionSpec{Tool: "amp"}
-	m.core.ToolWarmStart = map[string]time.Time{
-		"amp": {},
-	}
+	m.toolStartingAt = time.Now().Add(-toolReadyDelay)
+	m.toolStartingDuration = toolReadyDelay
 
 	progress := m.toolStartingProgress()
 	if progress != maxDisplayedToolStartingProgress {
@@ -537,12 +529,8 @@ func TestToolStartingProgressStaysBelowOneForExistingSession(t *testing.T) {
 func TestToolStartingProgressStaysBelowOneWhileWaitingForOpen(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeToolStarting
-	m.core.ToolWarmupTotal = 4
-	m.core.ToolWarmupCompleted = 4
-	m.core.PendingSpec = nil
-	m.core.ToolWarmStart = map[string]time.Time{
-		"amp": time.Now().Add(-toolReadyDelay),
-	}
+	m.toolStartingAt = time.Now().Add(-toolReadyDelay)
+	m.toolStartingDuration = toolReadyDelay
 
 	progress := m.toolStartingProgress()
 	if progress != maxDisplayedToolStartingProgress {

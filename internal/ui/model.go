@@ -20,36 +20,38 @@ import (
 )
 
 type Model struct {
-	core                core.Model
-	input               textinput.Model
-	worktreeInput       textinput.Model
-	toolInput           textinput.Model
-	sessionInput        textinput.Model
-	themeInput          textinput.Model
-	projectList         listmodel.Model
-	worktreeList        listmodel.Model
-	toolList            listmodel.Model
-	sessionList         listmodel.Model
-	themeList           listmodel.Model
-	spinner             spinner.Model
-	progress            progress.Model
-	fs                  ports.Filesystem
-	sessions            ports.SessionManager
-	maxDepth            int
-	width               int
-	height              int
-	SelectedSpec        *core.SessionSpec
-	SelectedSessionName string
-	styles              Styles
-	themes              []Theme
-	filteredThemes      []Theme
-	activeThemeIdx      int
-	themePickerPrevIdx  int
-	showHelp            bool
-	showThemePicker     bool
-	homeDir             string
-	help                help.Model
-	keymap              keyMap
+	core                 core.Model
+	input                textinput.Model
+	worktreeInput        textinput.Model
+	toolInput            textinput.Model
+	sessionInput         textinput.Model
+	themeInput           textinput.Model
+	projectList          listmodel.Model
+	worktreeList         listmodel.Model
+	toolList             listmodel.Model
+	sessionList          listmodel.Model
+	themeList            listmodel.Model
+	spinner              spinner.Model
+	progress             progress.Model
+	toolStartingAt       time.Time
+	toolStartingDuration time.Duration
+	fs                   ports.Filesystem
+	sessions             ports.SessionManager
+	maxDepth             int
+	width                int
+	height               int
+	SelectedSpec         *core.SessionSpec
+	SelectedSessionName  string
+	styles               Styles
+	themes               []Theme
+	filteredThemes       []Theme
+	activeThemeIdx       int
+	themePickerPrevIdx   int
+	showHelp             bool
+	showThemePicker      bool
+	homeDir              string
+	help                 help.Model
+	keymap               keyMap
 }
 
 func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Model {
@@ -374,9 +376,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if prevMode == core.ModeTool && m.core.Mode == core.ModeToolStarting {
 			m.toolInput.Blur()
+			m.beginToolStartingProgress(time.Now())
 		}
-		if prevMode == core.ModeToolStarting && m.core.Mode == core.ModeTool {
-			m.toolInput.Focus()
+		if prevMode == core.ModeToolStarting && m.core.Mode != core.ModeToolStarting {
+			if m.core.Mode == core.ModeTool {
+				m.toolInput.Focus()
+			}
+			m.toolStartingAt = time.Time{}
+			m.toolStartingDuration = 0
 		}
 		if prevMode == core.ModeWorktree && m.core.Mode == core.ModeWorktreeDeleteConfirm {
 			m.worktreeInput.Blur()
@@ -795,6 +802,30 @@ func (m Model) attachSessionCmd(session core.SessionInfo) tea.Cmd {
 }
 
 const toolReadyDelay = 7 * time.Second
+const toolStartingMinDuration = 200 * time.Millisecond
+
+func (m *Model) beginToolStartingProgress(now time.Time) {
+	duration := toolReadyDelay
+	if m.core.PendingSpec != nil && m.core.ToolWarmStart != nil {
+		if start, ok := m.core.ToolWarmStart[m.core.PendingSpec.Tool]; ok {
+			if start.IsZero() {
+				duration = toolStartingMinDuration
+			} else {
+				remaining := toolReadyDelay - now.Sub(start)
+				if remaining > 0 {
+					duration = remaining
+				} else {
+					duration = toolStartingMinDuration
+				}
+			}
+		}
+	}
+	if duration < toolStartingMinDuration {
+		duration = toolStartingMinDuration
+	}
+	m.toolStartingAt = now
+	m.toolStartingDuration = duration
+}
 
 func (m Model) checkToolReadyCmd(spec core.SessionSpec) tea.Cmd {
 	if m.core.ToolWarmStart != nil {
