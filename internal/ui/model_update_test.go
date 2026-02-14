@@ -124,3 +124,34 @@ line15`)
 		t.Fatalf("expected home key to move viewport to top, got offset %d", next.viewport.YOffset)
 	}
 }
+
+func TestUpdateEndMovesToLastProjectInBrowsing(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeBrowsing
+	m.core.Filtered = []core.DirEntry{{Path: "/one", Name: "one"}, {Path: "/two", Name: "two"}, {Path: "/three", Name: "three"}}
+	m.core.SelectedIdx = 0
+	m.syncLists()
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnd})
+	next := updated.(Model)
+	if next.core.SelectedIdx != 2 {
+		t.Fatalf("expected end to move selection to last index 2, got %d", next.core.SelectedIdx)
+	}
+}
+
+func TestUpdatePageDownMovesSelectionInBrowsing(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeBrowsing
+	m.core.Filtered = []core.DirEntry{
+		{Path: "/1", Name: "1"}, {Path: "/2", Name: "2"}, {Path: "/3", Name: "3"},
+		{Path: "/4", Name: "4"}, {Path: "/5", Name: "5"}, {Path: "/6", Name: "6"},
+	}
+	m.core.SelectedIdx = 0
+	m.syncLists()
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyPgDown})
+	next := updated.(Model)
+	if next.core.SelectedIdx <= 0 {
+		t.Fatalf("expected pgdown to move selection forward, got %d", next.core.SelectedIdx)
+	}
+}

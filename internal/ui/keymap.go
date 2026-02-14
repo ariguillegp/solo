@@ -50,6 +50,14 @@ func (k keyMap) actionForCore(msg tea.KeyMsg) (core.KeyAction, bool) {
 		return core.KeyUp, true
 	case key.Matches(msg, k.Down):
 		return core.KeyDown, true
+	case key.Matches(msg, k.PageUp):
+		return core.KeyPageUp, true
+	case key.Matches(msg, k.PageDown):
+		return core.KeyPageDown, true
+	case key.Matches(msg, k.Top):
+		return core.KeyTop, true
+	case key.Matches(msg, k.Bottom):
+		return core.KeyBottom, true
 	case key.Matches(msg, k.Select):
 		return core.KeyEnter, true
 	case key.Matches(msg, k.Delete):

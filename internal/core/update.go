@@ -196,6 +196,25 @@ func UpdateKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	return handleKey(m, key)
 }
 
+const pageJump = 5
+
+func clampIndex(idx, maxIdx int) int {
+	if maxIdx < 0 {
+		return 0
+	}
+	if idx < 0 {
+		return 0
+	}
+	if idx > maxIdx {
+		return maxIdx
+	}
+	return idx
+}
+
+func moveIndex(idx, maxIdx, delta int) int {
+	return clampIndex(idx+delta, maxIdx)
+}
+
 func handleKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch m.Mode {
 	case ModeBrowsing:
@@ -228,9 +247,31 @@ func handleBrowsingKey(m Model, key KeyAction) (Model, []Effect, bool) {
 		if _, ok := m.CreateProjectPath(); ok {
 			maxIdx = len(m.Filtered)
 		}
-		if m.SelectedIdx < maxIdx {
-			m.SelectedIdx++
+		m.SelectedIdx = moveIndex(m.SelectedIdx, maxIdx, 1)
+		return m, nil, true
+	case KeyPageUp:
+		maxIdx := len(m.Filtered) - 1
+		if _, ok := m.CreateProjectPath(); ok {
+			maxIdx = len(m.Filtered)
 		}
+		m.SelectedIdx = moveIndex(m.SelectedIdx, maxIdx, -pageJump)
+		return m, nil, true
+	case KeyPageDown:
+		maxIdx := len(m.Filtered) - 1
+		if _, ok := m.CreateProjectPath(); ok {
+			maxIdx = len(m.Filtered)
+		}
+		m.SelectedIdx = moveIndex(m.SelectedIdx, maxIdx, pageJump)
+		return m, nil, true
+	case KeyTop:
+		m.SelectedIdx = 0
+		return m, nil, true
+	case KeyBottom:
+		maxIdx := len(m.Filtered) - 1
+		if _, ok := m.CreateProjectPath(); ok {
+			maxIdx = len(m.Filtered)
+		}
+		m.SelectedIdx = clampIndex(maxIdx, maxIdx)
 		return m, nil, true
 	case KeyEnter:
 		if dir, ok := m.SelectedDir(); ok {
@@ -289,9 +330,31 @@ func handleWorktreeKey(m Model, key KeyAction) (Model, []Effect, bool) {
 		if _, ok := m.CreateWorktreeName(); ok {
 			maxIdx = len(m.FilteredWT)
 		}
-		if m.WorktreeIdx < maxIdx {
-			m.WorktreeIdx++
+		m.WorktreeIdx = moveIndex(m.WorktreeIdx, maxIdx, 1)
+		return m, nil, true
+	case KeyPageUp:
+		maxIdx := len(m.FilteredWT) - 1
+		if _, ok := m.CreateWorktreeName(); ok {
+			maxIdx = len(m.FilteredWT)
 		}
+		m.WorktreeIdx = moveIndex(m.WorktreeIdx, maxIdx, -pageJump)
+		return m, nil, true
+	case KeyPageDown:
+		maxIdx := len(m.FilteredWT) - 1
+		if _, ok := m.CreateWorktreeName(); ok {
+			maxIdx = len(m.FilteredWT)
+		}
+		m.WorktreeIdx = moveIndex(m.WorktreeIdx, maxIdx, pageJump)
+		return m, nil, true
+	case KeyTop:
+		m.WorktreeIdx = 0
+		return m, nil, true
+	case KeyBottom:
+		maxIdx := len(m.FilteredWT) - 1
+		if _, ok := m.CreateWorktreeName(); ok {
+			maxIdx = len(m.FilteredWT)
+		}
+		m.WorktreeIdx = clampIndex(maxIdx, maxIdx)
 		return m, nil, true
 	case KeyEnter:
 		if wt, ok := m.SelectedWorktree(); ok {
@@ -364,9 +427,23 @@ func handleToolKey(m Model, key KeyAction) (Model, []Effect, bool) {
 		m.ToolError = ""
 		return m, nil, true
 	case KeyDown:
-		if m.ToolIdx < len(m.FilteredTools)-1 {
-			m.ToolIdx++
-		}
+		m.ToolIdx = moveIndex(m.ToolIdx, len(m.FilteredTools)-1, 1)
+		m.ToolError = ""
+		return m, nil, true
+	case KeyPageUp:
+		m.ToolIdx = moveIndex(m.ToolIdx, len(m.FilteredTools)-1, -pageJump)
+		m.ToolError = ""
+		return m, nil, true
+	case KeyPageDown:
+		m.ToolIdx = moveIndex(m.ToolIdx, len(m.FilteredTools)-1, pageJump)
+		m.ToolError = ""
+		return m, nil, true
+	case KeyTop:
+		m.ToolIdx = 0
+		m.ToolError = ""
+		return m, nil, true
+	case KeyBottom:
+		m.ToolIdx = clampIndex(len(m.FilteredTools)-1, len(m.FilteredTools)-1)
 		m.ToolError = ""
 		return m, nil, true
 	case KeyEnter:
@@ -427,9 +504,19 @@ func handleSessionsKey(m Model, key KeyAction) (Model, []Effect, bool) {
 		}
 		return m, nil, true
 	case KeyDown:
-		if m.SessionIdx < len(m.FilteredSessions)-1 {
-			m.SessionIdx++
-		}
+		m.SessionIdx = moveIndex(m.SessionIdx, len(m.FilteredSessions)-1, 1)
+		return m, nil, true
+	case KeyPageUp:
+		m.SessionIdx = moveIndex(m.SessionIdx, len(m.FilteredSessions)-1, -pageJump)
+		return m, nil, true
+	case KeyPageDown:
+		m.SessionIdx = moveIndex(m.SessionIdx, len(m.FilteredSessions)-1, pageJump)
+		return m, nil, true
+	case KeyTop:
+		m.SessionIdx = 0
+		return m, nil, true
+	case KeyBottom:
+		m.SessionIdx = clampIndex(len(m.FilteredSessions)-1, len(m.FilteredSessions)-1)
 		return m, nil, true
 	case KeyEnter:
 		if session, ok := m.SelectedSession(); ok {

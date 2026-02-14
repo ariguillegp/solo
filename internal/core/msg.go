@@ -38,6 +38,10 @@ type KeyAction string
 const (
 	KeyUp       KeyAction = "up"
 	KeyDown     KeyAction = "down"
+	KeyPageUp   KeyAction = "page_up"
+	KeyPageDown KeyAction = "page_down"
+	KeyTop      KeyAction = "top"
+	KeyBottom   KeyAction = "bottom"
 	KeyEnter    KeyAction = "enter"
 	KeyDelete   KeyAction = "delete"
 	KeySessions KeyAction = "sessions"
