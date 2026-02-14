@@ -44,6 +44,9 @@ type Model struct {
 	ToolIdx              int
 	ToolWarmStart        map[string]time.Time
 	ToolErrors           map[string]string
+	ToolWarmupTotal      int
+	ToolWarmupCompleted  int
+	ToolWarmupFailed     int
 	ToolError            string
 	PendingSpec          *SessionSpec
 	SessionReturnMode    Mode

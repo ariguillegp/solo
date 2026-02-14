@@ -11,6 +11,7 @@ import (
 
 	"github.com/ariguillegp/rivet/internal/ports"
 	"github.com/ariguillegp/rivet/internal/ui/listmodel"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,6 +30,7 @@ type Model struct {
 	sessionList         listmodel.Model
 	themeList           listmodel.Model
 	spinner             spinner.Model
+	progress            progress.Model
 	fs                  ports.Filesystem
 	sessions            ports.SessionManager
 	maxDepth            int
@@ -63,11 +65,13 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
+	pr := progress.New()
+
 	homeDir, _ := os.UserHomeDir()
 
 	allThemes := Themes()
 	styles := NewStyles(allThemes[0])
-	return Model{
+	model := Model{
 		core:               core.NewModel(roots),
 		input:              ti,
 		worktreeInput:      wti,
@@ -80,6 +84,7 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		sessionList:        newSuggestionList(styles),
 		themeList:          newSuggestionList(styles),
 		spinner:            sp,
+		progress:           pr,
 		fs:                 fs,
 		sessions:           sessions,
 		maxDepth:           2,
@@ -90,6 +95,8 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		themePickerPrevIdx: 0,
 		homeDir:            homeDir,
 	}
+	model.syncProgressTheme(allThemes[0])
+	return model
 }
 
 func (m *Model) blurInputs() {
@@ -144,12 +151,19 @@ func (m *Model) closeThemePicker(apply bool) {
 	m.restoreInputFocus()
 }
 
+func (m *Model) syncProgressTheme(theme Theme) {
+	m.progress.FullColor = string(theme.Accent)
+	m.progress.EmptyColor = string(theme.Muted)
+}
+
 func (m *Model) applyThemeByIndex(themeIdx int) {
 	if themeIdx < 0 || themeIdx >= len(m.themes) {
 		return
 	}
+	theme := m.themes[themeIdx]
 	m.activeThemeIdx = themeIdx
-	m.styles = NewStyles(m.themes[themeIdx])
+	m.styles = NewStyles(theme)
+	m.syncProgressTheme(theme)
 	m.applyListStyles()
 }
 
@@ -289,9 +303,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "up", "ctrl+k", "down", "ctrl+j":
 				var cmd tea.Cmd
 				m.themeList, cmd = m.themeList.Update(msg)
-				cmds = append(cmds, cmd)
 				m.previewSelectedTheme()
-				return m, nil
+				return m, cmd
 			case "ctrl+c":
 				return m, tea.Quit
 			}

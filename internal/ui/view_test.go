@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/x/ansi"
 
@@ -205,10 +206,16 @@ func TestViewToolStarting(t *testing.T) {
 	m.height = 25
 	m.core.Mode = core.ModeToolStarting
 	m.core.PendingSpec = &core.SessionSpec{Tool: "opencode"}
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 3
+	m.core.ToolWarmupFailed = 1
 
 	view := stripANSI(m.View())
 	if !strings.Contains(view, "Starting opencode") {
 		t.Fatalf("expected tool starting view, got %q", view)
+	}
+	if !strings.Contains(view, "%") {
+		t.Fatalf("expected progress bar to include percentage text, got %q", view)
 	}
 }
 
@@ -276,7 +283,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 		{
 			name:      "tool starting",
 			mode:      core.ModeToolStarting,
-			helpParts: []string{"esc", "back"},
+			helpParts: []string{"esc", "cancel", "ctrl+c", "quit"},
 		},
 		{
 			name: "sessions",
@@ -394,4 +401,52 @@ type errTest string
 
 func (e errTest) Error() string {
 	return string(e)
+}
+
+func TestToolStartingProgressUsesWarmupDelayFraction(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeToolStarting
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 2
+	m.core.PendingSpec = &core.SessionSpec{Tool: "amp"}
+	m.core.ToolWarmStart = map[string]time.Time{
+		"amp": time.Now().Add(-(toolReadyDelay / 2)),
+	}
+
+	progress := m.toolStartingProgress()
+	if progress <= 0.35 || progress >= 0.65 {
+		t.Fatalf("expected in-progress value around halfway, got %f", progress)
+	}
+}
+
+func TestToolStartingProgressStaysBelowOneForExistingSession(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeToolStarting
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 4
+	m.core.PendingSpec = &core.SessionSpec{Tool: "amp"}
+	m.core.ToolWarmStart = map[string]time.Time{
+		"amp": {},
+	}
+
+	progress := m.toolStartingProgress()
+	if progress != maxDisplayedToolStartingProgress {
+		t.Fatalf("expected progress to stay below complete while startup is in-flight, got %f", progress)
+	}
+}
+
+func TestToolStartingProgressStaysBelowOneWhileWaitingForOpen(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeToolStarting
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 4
+	m.core.PendingSpec = nil
+	m.core.ToolWarmStart = map[string]time.Time{
+		"amp": time.Now().Add(-toolReadyDelay),
+	}
+
+	progress := m.toolStartingProgress()
+	if progress != maxDisplayedToolStartingProgress {
+		t.Fatalf("expected progress to stay below complete while opening session, got %f", progress)
+	}
 }

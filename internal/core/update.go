@@ -127,6 +127,8 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 			errText = msg.Err.Error()
 		}
 		m.ToolErrors[msg.Tool] = errText
+		m.ToolWarmupCompleted++
+		m.ToolWarmupFailed++
 		if m.Mode == ModeToolStarting && m.PendingSpec != nil && m.PendingSpec.Tool == msg.Tool {
 			m.ToolError = errText
 			m.PendingSpec = nil
@@ -139,6 +141,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 			m.ToolWarmStart = make(map[string]time.Time)
 		}
 		m.ToolWarmStart[msg.Tool] = msg.StartedAt
+		m.ToolWarmupCompleted++
 		return m, nil
 
 	case MsgToolPrewarmExisting:
@@ -149,6 +152,7 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 		if m.ToolErrors != nil {
 			delete(m.ToolErrors, msg.Tool)
 		}
+		m.ToolWarmupCompleted++
 		if m.Mode == ModeToolStarting && m.PendingSpec != nil && m.PendingSpec.Tool == msg.Tool {
 			spec := *m.PendingSpec
 			m.PendingSpec = nil
@@ -412,7 +416,7 @@ func handleToolStartingKey(m Model, key string) (Model, []Effect, bool) {
 	case "ctrl+c":
 		return m, []Effect{EffQuit{}}, true
 	}
-	return m, nil, true
+	return m, nil, false
 }
 
 func handleSessionsKey(m Model, key string) (Model, []Effect, bool) {
@@ -449,7 +453,11 @@ func enterToolMode(m Model) (Model, []Effect) {
 	m.PendingSpec = nil
 	m.ToolWarmStart = make(map[string]time.Time, len(m.Tools))
 	m.ToolErrors = make(map[string]string, len(m.Tools))
-	return m, []Effect{EffPrewarmAllTools{DirPath: m.SelectedWorktreePath, Tools: toolsNeedingWarmup(m.Tools)}}
+	warmupTools := toolsNeedingWarmup(m.Tools)
+	m.ToolWarmupTotal = len(warmupTools)
+	m.ToolWarmupCompleted = 0
+	m.ToolWarmupFailed = 0
+	return m, []Effect{EffPrewarmAllTools{DirPath: m.SelectedWorktreePath, Tools: warmupTools}}
 }
 
 func toolsNeedingWarmup(tools []string) []string {

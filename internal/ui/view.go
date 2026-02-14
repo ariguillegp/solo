@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -117,8 +118,10 @@ func (m Model) View() string {
 			toolName = m.core.PendingSpec.Tool
 		}
 		breadcrumb = m.renderBreadcrumb()
-		content = fmt.Sprintf("%s Starting %s...", m.spinner.View(), toolName)
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "back"}})
+		progressValue := m.toolStartingProgress()
+		bar := m.progress.ViewAs(progressValue)
+		content = fmt.Sprintf("Starting %s...\n\n%s", toolName, bar)
+		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "cancel"}, {"ctrl+c", "quit"}})
 
 	case core.ModeSessions:
 		header = m.styles.Title.Render("Active tmux sessions")
@@ -162,6 +165,57 @@ func (m Model) View() string {
 	}
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+}
+
+func clamp01(value float64) float64 {
+	if value < 0 {
+		return 0
+	}
+	if value > 1 {
+		return 1
+	}
+	return value
+}
+
+const maxDisplayedToolStartingProgress = 0.99
+
+func (m Model) displayableToolStartingProgress(value float64) float64 {
+	progress := clamp01(value)
+	if m.core.Mode == core.ModeToolStarting && progress >= 1 {
+		return maxDisplayedToolStartingProgress
+	}
+	return progress
+}
+
+func (m Model) toolStartingProgress() float64 {
+	total := m.core.ToolWarmupTotal
+	if total <= 0 {
+		return 1
+	}
+
+	completed := m.core.ToolWarmupCompleted
+	checksProgress := float64(completed) / float64(total)
+
+	if m.core.PendingSpec == nil || m.core.ToolWarmStart == nil {
+		return m.displayableToolStartingProgress(checksProgress)
+	}
+
+	start, ok := m.core.ToolWarmStart[m.core.PendingSpec.Tool]
+	if !ok {
+		return m.displayableToolStartingProgress(checksProgress)
+	}
+	if start.IsZero() {
+		return m.displayableToolStartingProgress(1)
+	}
+
+	elapsedFraction := float64(time.Since(start)) / float64(toolReadyDelay)
+	elapsedFraction = clamp01(elapsedFraction)
+
+	adjustedCompleted := completed - 1
+	if adjustedCompleted < 0 {
+		adjustedCompleted = 0
+	}
+	return m.displayableToolStartingProgress((float64(adjustedCompleted) + elapsedFraction) / float64(total))
 }
 
 func (m Model) renderBreadcrumb() string {

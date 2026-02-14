@@ -57,7 +57,7 @@ func (d suggestionDelegate) Render(w io.Writer, m listmodel.Model, index int, it
 		if row.detail != "" {
 			parts = append(parts, pathStyle.Render("- "+row.detail))
 		}
-		fmt.Fprint(w, prefix+strings.Join(parts, " "))
+		_, _ = fmt.Fprint(w, prefix+strings.Join(parts, " "))
 		return
 	}
 
@@ -71,7 +71,7 @@ func (d suggestionDelegate) Render(w io.Writer, m listmodel.Model, index int, it
 	if row.detail != "" {
 		parts = append(parts, pathStyle.Render("- "+row.detail))
 	}
-	fmt.Fprint(w, prefix+strings.Join(parts, " "))
+	_, _ = fmt.Fprint(w, prefix+strings.Join(parts, " "))
 }
 
 func newSuggestionList(styles Styles) listmodel.Model {
