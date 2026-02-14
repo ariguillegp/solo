@@ -152,7 +152,7 @@ func (m Model) View() string {
 		content += "\n\n" + helpLine
 	}
 
-	box := m.renderModalBox(content)
+	box := m.renderModalBox(content, m.isViewportActive())
 	if m.height <= 0 || m.width <= 0 {
 		return box
 	}
@@ -255,7 +255,7 @@ func (m Model) renderHelpModal() string {
 	header := m.styles.Title.Render("Help Menu")
 	body := m.fullHelpView() + "\n\n" + m.styles.Help.Render("Press ? or esc to close")
 	content := header + "\n\n" + m.renderViewportContent(body)
-	box := m.renderModalBox(content)
+	box := m.renderModalBox(content, true)
 	if m.height <= 0 || m.width <= 0 {
 		return box
 	}
@@ -277,7 +277,7 @@ func (m Model) renderThemePicker() string {
 	help := m.help.ShortHelpView([]key.Binding{m.keymap.binding(m.keymap.Select, "apply"), m.keymap.binding(m.keymap.Back, "cancel")})
 	content = header + "\n\n" + content + "\n\n" + help
 
-	box := m.renderModalBox(content)
+	box := m.renderModalBox(content, false)
 	if m.height <= 0 || m.width <= 0 {
 		return box
 	}
@@ -309,11 +309,13 @@ func (m Model) modalBoxDimensions() (int, int) {
 	return boxWidth, boxHeight
 }
 
-func (m Model) renderModalBox(content string) string {
+func (m Model) renderModalBox(content string, fixedHeight bool) string {
 	boxStyle := m.styles.BoxWithWidth(m.width)
-	_, boxHeight := m.modalBoxDimensions()
-	if boxHeight > 0 {
-		boxStyle = boxStyle.Height(boxHeight)
+	if fixedHeight {
+		_, boxHeight := m.modalBoxDimensions()
+		if boxHeight > 0 {
+			boxStyle = boxStyle.Height(boxHeight)
+		}
 	}
 	return boxStyle.Render(content)
 }
