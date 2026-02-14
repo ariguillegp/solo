@@ -505,6 +505,7 @@ func (e errTest) Error() string {
 func TestToolStartingProgressUsesWarmupDelayFraction(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeToolStarting
+	toolReadyDelay := core.ToolWarmupDelay("")
 	m.toolStartingAt = time.Now().Add(-(toolReadyDelay / 2))
 	m.toolStartingDuration = toolReadyDelay
 
@@ -517,6 +518,7 @@ func TestToolStartingProgressUsesWarmupDelayFraction(t *testing.T) {
 func TestToolStartingProgressStaysBelowOneForExistingSession(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeToolStarting
+	toolReadyDelay := core.ToolWarmupDelay("")
 	m.toolStartingAt = time.Now().Add(-toolReadyDelay)
 	m.toolStartingDuration = toolReadyDelay
 
@@ -529,6 +531,7 @@ func TestToolStartingProgressStaysBelowOneForExistingSession(t *testing.T) {
 func TestToolStartingProgressStaysBelowOneWhileWaitingForOpen(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeToolStarting
+	toolReadyDelay := core.ToolWarmupDelay("")
 	m.toolStartingAt = time.Now().Add(-toolReadyDelay)
 	m.toolStartingDuration = toolReadyDelay
 

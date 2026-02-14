@@ -43,6 +43,12 @@ type ToolDefinition struct {
 
 const ToolNone = "none"
 
+const defaultToolWarmupDelay = 7 * time.Second
+
+var toolWarmupDelays = map[string]time.Duration{
+	"opencode": 10 * time.Second,
+}
+
 var toolDefinitions = []ToolDefinition{
 	{
 		Name: "opencode",
@@ -90,6 +96,17 @@ func ToolNeedsWarmup(tool string) bool {
 		return false
 	}
 	return tool != ToolNone
+}
+
+func ToolWarmupDelay(tool string) time.Duration {
+	tool = strings.TrimSpace(tool)
+	if tool == "" {
+		return defaultToolWarmupDelay
+	}
+	if delay, ok := toolWarmupDelays[tool]; ok {
+		return delay
+	}
+	return defaultToolWarmupDelay
 }
 
 func SanitizeWorktreeName(name string) string {

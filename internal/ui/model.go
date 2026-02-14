@@ -801,10 +801,13 @@ func (m Model) attachSessionCmd(session core.SessionInfo) tea.Cmd {
 	}
 }
 
-const toolReadyDelay = 7 * time.Second
 const toolStartingMinDuration = 200 * time.Millisecond
 
 func (m *Model) beginToolStartingProgress(now time.Time) {
+	toolReadyDelay := core.ToolWarmupDelay("")
+	if m.core.PendingSpec != nil {
+		toolReadyDelay = core.ToolWarmupDelay(m.core.PendingSpec.Tool)
+	}
 	duration := toolReadyDelay
 	if m.core.PendingSpec != nil && m.core.ToolWarmStart != nil {
 		if start, ok := m.core.ToolWarmStart[m.core.PendingSpec.Tool]; ok {
@@ -828,6 +831,7 @@ func (m *Model) beginToolStartingProgress(now time.Time) {
 }
 
 func (m Model) checkToolReadyCmd(spec core.SessionSpec) tea.Cmd {
+	toolReadyDelay := core.ToolWarmupDelay(spec.Tool)
 	if m.core.ToolWarmStart != nil {
 		if start, ok := m.core.ToolWarmStart[spec.Tool]; ok {
 			if start.IsZero() {
