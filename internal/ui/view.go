@@ -145,7 +145,7 @@ func (m Model) View() string {
 		content += "\n\n" + helpLine
 	}
 
-	box := m.renderModalBox(content, m.isViewportActive())
+	box := m.renderModalBox(content, false)
 	if m.height <= 0 || m.width <= 0 {
 		return box
 	}
