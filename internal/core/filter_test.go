@@ -1,6 +1,9 @@
 package core
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestFilterWorktreesMatchesSanitizedBranch(t *testing.T) {
 	worktrees := []Worktree{{Path: "/repo/feat", Name: "rivet--feature-test", Branch: "feature/test"}}
@@ -8,6 +11,19 @@ func TestFilterWorktreesMatchesSanitizedBranch(t *testing.T) {
 	filtered := FilterWorktrees(worktrees, "feature test")
 	if len(filtered) != 1 {
 		t.Fatalf("expected sanitized branch to match query, got %d", len(filtered))
+	}
+}
+
+func TestFilterDirsIncludesVeryLongFuzzyMatchesWithNegativeScore(t *testing.T) {
+	longName := strings.Repeat("z", 120) + "a"
+	dirs := []DirEntry{{Name: longName}, {Name: "bbb"}}
+
+	filtered := FilterDirs(dirs, "a")
+	if len(filtered) != 1 {
+		t.Fatalf("expected long fuzzy subsequence match to be retained, got %d", len(filtered))
+	}
+	if filtered[0].Name != longName {
+		t.Fatalf("expected long fuzzy match to be returned, got %q", filtered[0].Name)
 	}
 }
 
