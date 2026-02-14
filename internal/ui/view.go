@@ -255,7 +255,7 @@ func (m Model) renderHelpModal() string {
 	header := m.styles.Title.Render("Help Menu")
 	body := m.fullHelpView() + "\n\n" + m.styles.Help.Render("Press ? or esc to close")
 	content := header + "\n\n" + m.renderViewportContent(body)
-	box := m.renderModalBox(content, true)
+	box := m.renderModalBox(content, false)
 	if m.height <= 0 || m.width <= 0 {
 		return box
 	}
