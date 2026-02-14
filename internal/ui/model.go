@@ -11,6 +11,7 @@ import (
 
 	"github.com/ariguillegp/rivet/internal/ports"
 	"github.com/ariguillegp/rivet/internal/ui/listmodel"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,6 +30,7 @@ type Model struct {
 	sessionList         listmodel.Model
 	themeList           listmodel.Model
 	spinner             spinner.Model
+	progress            progress.Model
 	fs                  ports.Filesystem
 	sessions            ports.SessionManager
 	maxDepth            int
@@ -63,6 +65,8 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
+	pr := progress.New(progress.WithDefaultGradient())
+
 	homeDir, _ := os.UserHomeDir()
 
 	allThemes := Themes()
@@ -80,6 +84,7 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		sessionList:        newSuggestionList(styles),
 		themeList:          newSuggestionList(styles),
 		spinner:            sp,
+		progress:           pr,
 		fs:                 fs,
 		sessions:           sessions,
 		maxDepth:           2,

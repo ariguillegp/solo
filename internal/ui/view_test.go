@@ -205,10 +205,16 @@ func TestViewToolStarting(t *testing.T) {
 	m.height = 25
 	m.core.Mode = core.ModeToolStarting
 	m.core.PendingSpec = &core.SessionSpec{Tool: "opencode"}
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 3
+	m.core.ToolWarmupFailed = 1
 
 	view := stripANSI(m.View())
 	if !strings.Contains(view, "Starting opencode") {
 		t.Fatalf("expected tool starting view, got %q", view)
+	}
+	if !strings.Contains(view, "2/4 tools ready") {
+		t.Fatalf("expected warmup status text, got %q", view)
 	}
 }
 
@@ -276,7 +282,7 @@ func TestViewHelpLinePerMode(t *testing.T) {
 		{
 			name:      "tool starting",
 			mode:      core.ModeToolStarting,
-			helpParts: []string{"esc", "back"},
+			helpParts: []string{"esc", "cancel", "ctrl+c", "quit"},
 		},
 		{
 			name: "sessions",
