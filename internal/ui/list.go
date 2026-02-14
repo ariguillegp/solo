@@ -94,10 +94,10 @@ func newSessionTable(styles Styles) table.Model {
 	return t
 }
 
-func newSessionTableStyles(styles Styles) table.Styles {
+func newSessionTableStyles(_ Styles) table.Styles {
 	ts := table.DefaultStyles()
-	ts.Header = ts.Header.Foreground(styles.Theme.Subtle).BorderForeground(styles.Theme.Border)
-	ts.Selected = ts.Selected.Foreground(styles.Theme.Fg).Background(styles.Theme.Selection).Bold(false)
+	ts.Header = ts.Header.Bold(true)
+	ts.Selected = ts.Selected.Bold(false)
 	return ts
 }
 
