@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/ariguillegp/rivet/internal/core"
+	"github.com/ariguillegp/rivet/internal/ui/listmodel"
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -30,10 +30,10 @@ func (i suggestionItem) FilterValue() string {
 
 type suggestionDelegate struct{ styles Styles }
 
-func (d suggestionDelegate) Height() int                             { return 1 }
-func (d suggestionDelegate) Spacing() int                            { return 0 }
-func (d suggestionDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d suggestionDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+func (d suggestionDelegate) Height() int                                  { return 1 }
+func (d suggestionDelegate) Spacing() int                                 { return 0 }
+func (d suggestionDelegate) Update(_ tea.Msg, _ *listmodel.Model) tea.Cmd { return nil }
+func (d suggestionDelegate) Render(w io.Writer, m listmodel.Model, index int, item listmodel.Item) {
 	row, ok := item.(suggestionItem)
 	if !ok {
 		return
@@ -74,8 +74,8 @@ func (d suggestionDelegate) Render(w io.Writer, m list.Model, index int, item li
 	fmt.Fprint(w, prefix+strings.Join(parts, " "))
 }
 
-func newSuggestionList(styles Styles) list.Model {
-	l := list.New([]list.Item{}, suggestionDelegate{styles: styles}, 0, defaultListSuggestions)
+func newSuggestionList(styles Styles) listmodel.Model {
+	l := listmodel.New([]listmodel.Item{}, suggestionDelegate{styles: styles}, 0, defaultListSuggestions)
 	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 	l.SetShowPagination(false)
@@ -144,7 +144,7 @@ func visibleListWindow(total, selectedIdx, maxItems int) (start, end int) {
 	return start, end
 }
 
-func (m Model) renderCount(l list.Model) string {
+func (m Model) renderCount(l listmodel.Model) string {
 	total := len(l.Items())
 	if total == 0 {
 		return ""
@@ -157,8 +157,8 @@ func (m Model) renderCount(l list.Model) string {
 	return "\n" + m.styles.Count.Render(line)
 }
 
-func toItems(rows []suggestionItem) []list.Item {
-	items := make([]list.Item, 0, len(rows))
+func toItems(rows []suggestionItem) []listmodel.Item {
+	items := make([]listmodel.Item, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, row)
 	}
@@ -166,7 +166,7 @@ func toItems(rows []suggestionItem) []list.Item {
 }
 
 func (m *Model) applyListStyles() {
-	lists := []*list.Model{&m.projectList, &m.worktreeList, &m.toolList, &m.sessionList, &m.themeList}
+	lists := []*listmodel.Model{&m.projectList, &m.worktreeList, &m.toolList, &m.sessionList, &m.themeList}
 	for _, l := range lists {
 		l.SetDelegate(suggestionDelegate{styles: m.styles})
 		l.SetHeight(listHeight(m.listLimit(), len(l.Items())))

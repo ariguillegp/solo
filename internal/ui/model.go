@@ -10,7 +10,7 @@ import (
 	"github.com/ariguillegp/rivet/internal/core"
 
 	"github.com/ariguillegp/rivet/internal/ports"
-	"github.com/charmbracelet/bubbles/list"
+	"github.com/ariguillegp/rivet/internal/ui/listmodel"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,11 +23,11 @@ type Model struct {
 	toolInput           textinput.Model
 	sessionInput        textinput.Model
 	themeInput          textinput.Model
-	projectList         list.Model
-	worktreeList        list.Model
-	toolList            list.Model
-	sessionList         list.Model
-	themeList           list.Model
+	projectList         listmodel.Model
+	worktreeList        listmodel.Model
+	toolList            listmodel.Model
+	sessionList         listmodel.Model
+	themeList           listmodel.Model
 	spinner             spinner.Model
 	fs                  ports.Filesystem
 	sessions            ports.SessionManager

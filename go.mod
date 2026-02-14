@@ -7,7 +7,6 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.10.1
-	github.com/sahilm/fuzzy v0.1.1
 )
 
 require (
@@ -29,5 +28,3 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
 )
-
-replace github.com/sahilm/fuzzy => ./third_party/fuzzy
