@@ -322,18 +322,28 @@ func (m Model) renderModalBox(content string, fixedHeight bool) string {
 
 func (m Model) renderViewportContent(content string) string {
 	vp := m.viewport
-	if vp.Width <= 0 || vp.Height <= 0 {
-		boxWidth, boxHeight := m.modalBoxDimensions()
-		boxStyle := m.styles.BoxWithWidth(m.width)
-		vp.Width = boxWidth - boxStyle.GetHorizontalFrameSize()
-		vp.Height = boxHeight - boxStyle.GetVerticalFrameSize()
-		if vp.Width < 1 {
-			vp.Width = 1
-		}
-		if vp.Height < 1 {
-			vp.Height = 1
-		}
+	boxWidth, boxHeight := m.modalBoxDimensions()
+	boxStyle := m.styles.BoxWithWidth(m.width)
+	maxWidth := boxWidth - boxStyle.GetHorizontalFrameSize()
+	maxHeight := boxHeight - boxStyle.GetVerticalFrameSize()
+	if maxWidth < 1 {
+		maxWidth = 1
 	}
+	if maxHeight < 1 {
+		maxHeight = 1
+	}
+
+	vp.Width = maxWidth
+	contentHeight := lipgloss.Height(content)
+	if contentHeight < 1 {
+		contentHeight = 1
+	}
+	if contentHeight < maxHeight {
+		vp.Height = contentHeight
+	} else {
+		vp.Height = maxHeight
+	}
+
 	vp.SetContent(content)
 	return vp.View()
 }

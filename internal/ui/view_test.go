@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/ariguillegp/rivet/internal/core"
@@ -608,5 +609,18 @@ func TestViewSessionsTableShowsSelectedRowOutsideInitialViewport(t *testing.T) {
 	view := stripANSI(m.View())
 	if !strings.Contains(view, "branch-12") {
 		t.Fatalf("expected selected row to be visible in table viewport, got %q", view)
+	}
+}
+
+func TestRenderViewportContentUsesContentHeightWhenShort(t *testing.T) {
+	m := newTestModel()
+	m.width = 120
+	m.height = 40
+	m.viewport.Width = 50
+	m.viewport.Height = 20
+
+	rendered := stripANSI(m.renderViewportContent("line1\nline2"))
+	if got := lipgloss.Height(rendered); got != 2 {
+		t.Fatalf("expected rendered viewport height 2, got %d", got)
 	}
 }
