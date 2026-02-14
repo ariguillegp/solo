@@ -113,6 +113,13 @@ func (t *TmuxSession) ListSessions() ([]core.SessionInfo, error) {
 			info = core.SessionInfo{Name: name, DirPath: sessionPath}
 		}
 		info.LastActive = lastActive
+		projectPath, branch := sessionMetadata(sessionPath)
+		if strings.TrimSpace(projectPath) != "" {
+			info.Project = projectPath
+		}
+		if strings.TrimSpace(branch) != "" {
+			info.Branch = branch
+		}
 		sessions = append(sessions, info)
 	}
 
@@ -132,6 +139,25 @@ func parseTmuxUnixTime(parts []string, idx int) time.Time {
 		return time.Time{}
 	}
 	return time.Unix(unixValue, 0)
+}
+
+func sessionMetadata(dirPath string) (projectPath string, branch string) {
+	dirPath = strings.TrimSpace(dirPath)
+	if dirPath == "" {
+		return "", ""
+	}
+	projectPath = gitOutput("-C", dirPath, "rev-parse", "--show-toplevel")
+	branch = gitOutput("-C", dirPath, "branch", "--show-current")
+	return strings.TrimSpace(projectPath), strings.TrimSpace(branch)
+}
+
+func gitOutput(args ...string) string {
+	cmd := exec.Command("git", args...)
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(output))
 }
 
 func (t *TmuxSession) AttachSession(name string) error {

@@ -111,3 +111,52 @@ func TestListSessionsIncludesLastActiveWhenAvailable(t *testing.T) {
 		t.Fatalf("expected last active timestamp to be parsed")
 	}
 }
+
+func TestListSessionsIncludesProjectAndBranchMetadata(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmuxPath := filepath.Join(tmpDir, "tmux")
+	gitPath := filepath.Join(tmpDir, "git")
+
+	tmuxScript := `#!/bin/sh
+echo "demo	/home/demo/Projects/rivet/rbac-sentinel	1735689600"
+exit 0
+`
+
+	gitScript := `#!/bin/sh
+if [ "$3" = "rev-parse" ]; then
+  echo "/home/demo/Projects/rivet"
+  exit 0
+fi
+if [ "$3" = "branch" ]; then
+  echo "rbac-sentinel"
+  exit 0
+fi
+exit 1
+`
+
+	if err := os.WriteFile(tmuxPath, []byte(tmuxScript), 0755); err != nil {
+		t.Fatalf("failed to write tmux stub: %v", err)
+	}
+	if err := os.WriteFile(gitPath, []byte(gitScript), 0755); err != nil {
+		t.Fatalf("failed to write git stub: %v", err)
+	}
+
+	pathEnv := os.Getenv("PATH")
+	pathSep := string(os.PathListSeparator)
+	t.Setenv("PATH", tmpDir+pathSep+pathEnv)
+
+	session := &TmuxSession{}
+	sessions, err := session.ListSessions()
+	if err != nil {
+		t.Fatalf("expected no error listing sessions: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("expected one session, got %d", len(sessions))
+	}
+	if sessions[0].Project != "/home/demo/Projects/rivet" {
+		t.Fatalf("expected project path from git metadata, got %q", sessions[0].Project)
+	}
+	if sessions[0].Branch != "rbac-sentinel" {
+		t.Fatalf("expected branch from git metadata, got %q", sessions[0].Branch)
+	}
+}

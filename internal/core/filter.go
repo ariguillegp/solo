@@ -77,10 +77,14 @@ func FilterSessions(sessions []SessionInfo, query string) []SessionInfo {
 	ranked := rankMatches(sessions, func(session SessionInfo) (int, bool) {
 		name := strings.ToLower(session.Name)
 		path := strings.ToLower(session.DirPath)
+		project := strings.ToLower(session.Project)
+		branch := strings.ToLower(session.Branch)
 		tool := strings.ToLower(session.Tool)
 		return bestScore(
 			matchScore(name, query, true),
 			matchScore(path, query, false),
+			matchScore(project, query, false),
+			matchScore(branch, query, false),
 			matchScore(tool, query, false),
 		)
 	})
