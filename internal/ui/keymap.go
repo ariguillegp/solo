@@ -29,8 +29,8 @@ func newKeyMap() keyMap {
 	return keyMap{
 		Up:       key.NewBinding(key.WithKeys("up", "ctrl+k"), key.WithHelp("↑/ctrl+k", "up")),
 		Down:     key.NewBinding(key.WithKeys("down", "ctrl+j"), key.WithHelp("↓/ctrl+j", "down")),
-		PageUp:   key.NewBinding(key.WithKeys("pgup"), key.WithHelp("pgup", "page up")),
-		PageDown: key.NewBinding(key.WithKeys("pgdown"), key.WithHelp("pgdn", "page down")),
+		PageUp:   key.NewBinding(key.WithKeys("pgup", "pageup"), key.WithHelp("pgup", "page up")),
+		PageDown: key.NewBinding(key.WithKeys("pgdown", "pgdn", "pagedown"), key.WithHelp("pgdn", "page down")),
 		Top:      key.NewBinding(key.WithKeys("home"), key.WithHelp("home", "top")),
 		Bottom:   key.NewBinding(key.WithKeys("end"), key.WithHelp("end", "bottom")),
 		Select:   key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
@@ -90,8 +90,9 @@ func (k keyMap) sessionsEmptyShortHelp() []key.Binding {
 
 func (k keyMap) fullHelp(mode core.Mode) [][]key.Binding {
 	common := [][]key.Binding{
-		{k.Up, k.Down, k.Select, k.Back, k.Quit},
-		{k.Type, k.Toggle, k.Sessions, k.Delete, k.Theme},
+		{k.Up, k.Down, k.PageUp, k.PageDown, k.Select},
+		{k.Top, k.Bottom, k.Back, k.Quit, k.Toggle},
+		{k.Type, k.Sessions, k.Delete, k.Theme},
 	}
 	switch mode {
 	case core.ModeLoading, core.ModeError:

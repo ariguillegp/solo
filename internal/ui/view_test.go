@@ -373,7 +373,7 @@ func TestViewHelpModalPerMode(t *testing.T) {
 		{
 			name:      "browsing help",
 			mode:      core.ModeBrowsing,
-			wantParts: []string{"enter", "select", "ctrl+s", "sessions", "ctrl+d", "delete", "ctrl+t", "theme"},
+			wantParts: []string{"enter", "select", "ctrl+s", "ctrl+d", "ctrl+t", "pgdn", "page down", "home", "top", "end", "bottom"},
 		},
 		{
 			name:      "delete confirm help",

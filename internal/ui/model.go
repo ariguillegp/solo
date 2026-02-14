@@ -167,10 +167,31 @@ func (m *Model) updateViewportSize() {
 	m.viewport.Height = innerHeight
 }
 
-func (m *Model) updateViewport(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
-	return cmd
+func (m *Model) updateViewport(msg tea.KeyMsg) tea.Cmd {
+	switch {
+	case key.Matches(msg, m.keymap.Down):
+		m.viewport.LineDown(1)
+		return nil
+	case key.Matches(msg, m.keymap.Up):
+		m.viewport.LineUp(1)
+		return nil
+	case key.Matches(msg, m.keymap.PageDown):
+		m.viewport.PageDown()
+		return nil
+	case key.Matches(msg, m.keymap.PageUp):
+		m.viewport.PageUp()
+		return nil
+	case key.Matches(msg, m.keymap.Top):
+		m.viewport.GotoTop()
+		return nil
+	case key.Matches(msg, m.keymap.Bottom):
+		m.viewport.GotoBottom()
+		return nil
+	default:
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return cmd
+	}
 }
 
 func (m *Model) openThemePicker() {

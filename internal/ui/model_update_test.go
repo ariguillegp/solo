@@ -89,3 +89,38 @@ func TestUpdateTypingGInBrowsingUpdatesInput(t *testing.T) {
 		t.Fatalf("expected input value to include typed rune, got %q", next.input.Value())
 	}
 }
+
+func TestUpdateViewportHomeEndHandledInHelp(t *testing.T) {
+	m := newTestModel()
+	m.showHelp = true
+	m.width = 80
+	m.height = 8
+	m.updateViewportSize()
+	m.viewport.SetContent(`line1
+line2
+line3
+line4
+line5
+line6
+line7
+line8
+line9
+line10
+line11
+line12
+line13
+line14
+line15`)
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnd})
+	next := updated.(Model)
+	if next.viewport.YOffset <= 0 {
+		t.Fatalf("expected end key to move viewport to bottom, got offset %d", next.viewport.YOffset)
+	}
+
+	updated, _ = next.Update(tea.KeyMsg{Type: tea.KeyHome})
+	next = updated.(Model)
+	if next.viewport.YOffset != 0 {
+		t.Fatalf("expected home key to move viewport to top, got offset %d", next.viewport.YOffset)
+	}
+}
