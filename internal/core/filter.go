@@ -1,6 +1,9 @@
 package core
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 func FilterDirs(dirs []DirEntry, query string) []DirEntry {
 	if query == "" {
@@ -8,28 +11,16 @@ func FilterDirs(dirs []DirEntry, query string) []DirEntry {
 	}
 
 	query = strings.ToLower(query)
-	var result []DirEntry
-
-	for _, d := range dirs {
+	ranked := rankMatches(dirs, func(d DirEntry) int {
 		name := strings.ToLower(d.Name)
 		path := strings.ToLower(d.Path)
+		return bestScore(
+			matchScore(name, query, true),
+			matchScore(path, query, false),
+		)
+	})
 
-		if fuzzyMatch(name, query) || fuzzyMatch(path, query) {
-			result = append(result, d)
-		}
-	}
-
-	return result
-}
-
-func fuzzyMatch(text, pattern string) bool {
-	pi := 0
-	for ti := 0; ti < len(text) && pi < len(pattern); ti++ {
-		if text[ti] == pattern[pi] {
-			pi++
-		}
-	}
-	return pi == len(pattern)
+	return ranked
 }
 
 func FilterWorktrees(wts []Worktree, query string) []Worktree {
@@ -39,19 +30,22 @@ func FilterWorktrees(wts []Worktree, query string) []Worktree {
 
 	query = strings.ToLower(query)
 	querySanitized := strings.ToLower(SanitizeWorktreeName(query))
-	var result []Worktree
-
-	for _, wt := range wts {
+	ranked := rankMatches(wts, func(wt Worktree) int {
 		name := strings.ToLower(wt.Name)
 		branch := strings.ToLower(wt.Branch)
 		branchSanitized := strings.ToLower(SanitizeWorktreeName(wt.Branch))
 
-		if fuzzyMatch(name, query) || fuzzyMatch(branch, query) || (querySanitized != "" && fuzzyMatch(branchSanitized, querySanitized)) {
-			result = append(result, wt)
+		score := bestScore(
+			matchScore(name, query, true),
+			matchScore(branch, query, true),
+		)
+		if querySanitized != "" {
+			score = bestScore(score, matchScore(branchSanitized, querySanitized, true))
 		}
-	}
+		return score
+	})
 
-	return result
+	return ranked
 }
 
 func FilterTools(tools []string, query string) []string {
@@ -60,16 +54,12 @@ func FilterTools(tools []string, query string) []string {
 	}
 
 	query = strings.ToLower(query)
-	var result []string
-
-	for _, tool := range tools {
+	ranked := rankMatches(tools, func(tool string) int {
 		name := strings.ToLower(tool)
-		if fuzzyMatch(name, query) {
-			result = append(result, tool)
-		}
-	}
+		return matchScore(name, query, true)
+	})
 
-	return result
+	return ranked
 }
 
 func FilterSessions(sessions []SessionInfo, query string) []SessionInfo {
@@ -78,16 +68,116 @@ func FilterSessions(sessions []SessionInfo, query string) []SessionInfo {
 	}
 
 	query = strings.ToLower(query)
-	var result []SessionInfo
-
-	for _, session := range sessions {
+	ranked := rankMatches(sessions, func(session SessionInfo) int {
 		name := strings.ToLower(session.Name)
 		path := strings.ToLower(session.DirPath)
 		tool := strings.ToLower(session.Tool)
-		if fuzzyMatch(name, query) || fuzzyMatch(path, query) || fuzzyMatch(tool, query) {
-			result = append(result, session)
-		}
+		return bestScore(
+			matchScore(name, query, true),
+			matchScore(path, query, false),
+			matchScore(tool, query, false),
+		)
+	})
+
+	return ranked
+}
+
+const noMatchScore = -1
+
+func matchScore(text, pattern string, preferExactPrefix bool) int {
+	if text == "" || pattern == "" {
+		return noMatchScore
 	}
 
+	if text == pattern {
+		if preferExactPrefix {
+			return 1_000_000
+		}
+		return 950_000
+	}
+	if strings.HasPrefix(text, pattern) {
+		if preferExactPrefix {
+			return 900_000
+		}
+		return 850_000
+	}
+
+	base := fuzzySubsequenceScore(text, pattern)
+	if base == noMatchScore {
+		return noMatchScore
+	}
+
+	return base
+}
+
+func fuzzySubsequenceScore(text, pattern string) int {
+	pi := 0
+	lastMatch := -2
+	score := 0
+
+	for ti := 0; ti < len(text) && pi < len(pattern); ti++ {
+		if text[ti] != pattern[pi] {
+			continue
+		}
+
+		score += 100
+		if lastMatch+1 == ti {
+			score += 35
+		}
+		if ti == pi {
+			score += 20
+		}
+		if ti == 0 {
+			score += 15
+		}
+		lastMatch = ti
+		pi++
+	}
+
+	if pi != len(pattern) {
+		return noMatchScore
+	}
+
+	gapPenalty := len(text) - len(pattern)
+	if gapPenalty > 0 {
+		score -= gapPenalty
+	}
+	return score
+}
+
+func bestScore(scores ...int) int {
+	best := noMatchScore
+	for _, score := range scores {
+		if score > best {
+			best = score
+		}
+	}
+	return best
+}
+
+func rankMatches[T any](items []T, scorer func(T) int) []T {
+	type rankedItem struct {
+		item  T
+		idx   int
+		score int
+	}
+
+	ranked := make([]rankedItem, 0, len(items))
+	for idx, item := range items {
+		score := scorer(item)
+		if score == noMatchScore {
+			continue
+		}
+		ranked = append(ranked, rankedItem{item: item, idx: idx, score: score})
+	}
+
+	sort.SliceStable(ranked, func(i, j int) bool {
+		return ranked[i].score > ranked[j].score
+	})
+
+	result := make([]T, 0, len(ranked))
+	for _, entry := range ranked {
+		result = append(result, entry.item)
+	}
 	return result
 }
