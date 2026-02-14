@@ -77,3 +77,15 @@ func TestUpdateViewportScrollHandledInDeleteConfirm(t *testing.T) {
 		t.Fatalf("expected viewport to scroll down, got offset %d", next.viewport.YOffset)
 	}
 }
+
+func TestUpdateTypingGInBrowsingUpdatesInput(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeBrowsing
+	m.input.SetValue("")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}})
+	next := updated.(Model)
+	if next.input.Value() != "g" {
+		t.Fatalf("expected input value to include typed rune, got %q", next.input.Value())
+	}
+}
