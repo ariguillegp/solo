@@ -81,11 +81,10 @@ const compactSessionMinWidth = 95
 
 func newSessionTable(styles Styles) table.Model {
 	columns := []table.Column{
-		{Title: "Session Name", Width: 24},
-		{Title: "Project", Width: 18},
-		{Title: "Worktree", Width: 16},
-		{Title: "Tool", Width: 10},
-		{Title: "Last Active", Width: 16},
+		{Title: "Project", Width: 40},
+		{Title: "Branch", Width: 22},
+		{Title: "Tool", Width: 12},
+		{Title: "Last active", Width: 16},
 	}
 	t := table.New(table.WithColumns(columns), table.WithRows(nil), table.WithFocused(true), table.WithHeight(defaultListSuggestions))
 	t.SetStyles(newSessionTableStyles(styles))
@@ -117,10 +116,10 @@ func (m Model) sessionProjectLabel(session core.SessionInfo) string {
 	if projectPath == "." || projectPath == string(filepath.Separator) {
 		return ""
 	}
-	return filepath.Base(projectPath)
+	return m.displayPath(projectPath)
 }
 
-func (m Model) sessionWorktreeLabel(session core.SessionInfo) string {
+func (m Model) sessionBranchLabel(session core.SessionInfo) string {
 	name := core.SessionWorktreeName(session.DirPath)
 	if name != "" {
 		return name
@@ -278,9 +277,8 @@ func (m *Model) syncSessionList() {
 		}
 		compactRows = append(compactRows, suggestionItem{primary: label})
 		tableRows = append(tableRows, table.Row{
-			session.Name,
 			m.sessionProjectLabel(session),
-			m.sessionWorktreeLabel(session),
+			m.sessionBranchLabel(session),
 			session.Tool,
 			sessionLastActiveLabel(session.LastActive),
 		})

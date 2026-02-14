@@ -548,15 +548,16 @@ func TestViewSessionsUsesTableOnWideTerminal(t *testing.T) {
 	m.core.Mode = core.ModeSessions
 	m.core.Sessions = []core.SessionInfo{{
 		Name:       "alpha",
-		DirPath:    "/repo/project/feature-a",
+		DirPath:    "/home/demo/repo/project/feature-a",
 		Tool:       "codex",
 		LastActive: time.Unix(1735689600, 0),
 	}}
+	m.homeDir = "/home/demo"
 	m.core.FilteredSessions = m.core.Sessions
 	m.syncSessionList()
 
 	view := stripANSI(m.View())
-	for _, part := range []string{"Session Name", "Project", "Worktree", "Tool", "Last Active"} {
+	for _, part := range []string{"Project", "Branch", "Tool", "Last active", "~/repo/project"} {
 		if !strings.Contains(view, part) {
 			t.Fatalf("expected wide sessions view to contain %q, got %q", part, view)
 		}
@@ -573,7 +574,7 @@ func TestViewSessionsUsesCompactListOnNarrowTerminal(t *testing.T) {
 	m.syncSessionList()
 
 	view := stripANSI(m.View())
-	if strings.Contains(view, "Session Name") {
+	if strings.Contains(view, "Branch") {
 		t.Fatalf("expected narrow sessions view to omit table headers, got %q", view)
 	}
 	if !strings.Contains(view, "alpha") {
