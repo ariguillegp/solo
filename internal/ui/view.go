@@ -122,12 +122,12 @@ func (m Model) View() string {
 		if readyCount < 0 {
 			readyCount = 0
 		}
-		total := m.core.ToolWarmupTotal
-		progressValue := m.toolStartingProgress()
-		status := fmt.Sprintf("%d/%d tools ready", readyCount, total)
-		bar := m.progress.ViewAs(progressValue)
-		content = fmt.Sprintf("Starting %s...\n\n%s\n%s", toolName, bar, m.styles.Help.Render(status))
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "cancel"}, {"ctrl+c", "quit"}})
+			total := m.core.ToolWarmupTotal
+			progressValue := m.toolStartingProgress()
+			status := fmt.Sprintf("%d/%d tools ready", readyCount, total)
+			bar := m.progress.ViewAs(progressValue)
+			content = fmt.Sprintf("Starting %s...\n\n%s\n%s", toolName, bar, m.styles.Help.Render(status))
+			helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "cancel"}, {"ctrl+c", "quit"}})
 
 	case core.ModeSessions:
 		header = m.styles.Title.Render("Active tmux sessions")
