@@ -322,7 +322,8 @@ func TestViewThemePicker(t *testing.T) {
 	m.height = 25
 	m.showThemePicker = true
 	m.filteredThemes = []Theme{{Name: "Gruvbox"}, {Name: "Dracula"}}
-	m.themeIdx = 1
+	m.syncThemeList()
+	m.themeList.Select(1)
 	m.themeInput.SetValue("dra")
 
 	view := stripANSI(m.View())
@@ -369,66 +370,23 @@ func TestViewStepHeaders(t *testing.T) {
 	}
 }
 
-func TestViewScrollIndicators(t *testing.T) {
+func TestViewLargeListSelection(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeBrowsing
 	m.core.Query = "proj"
 	m.input.SetValue("proj")
+	m.height = 18
 
 	var dirs []core.DirEntry
 	for i := 1; i <= 10; i++ {
 		dirs = append(dirs, core.DirEntry{Path: fmt.Sprintf("/proj%d", i), Name: fmt.Sprintf("proj%d", i)})
 	}
 	m.core.Filtered = dirs
-
-	t.Run("top shows more below", func(t *testing.T) {
-		m.core.SelectedIdx = 0
-		view := stripANSI(m.View())
-		if !strings.Contains(view, "more below") {
-			t.Fatalf("expected 'more below' indicator at top, got %q", view)
-		}
-		if strings.Contains(view, "more above") {
-			t.Fatalf("did not expect 'more above' indicator at top, got %q", view)
-		}
-	})
-
-	t.Run("middle shows both indicators", func(t *testing.T) {
-		m.core.SelectedIdx = 5
-		view := stripANSI(m.View())
-		if !strings.Contains(view, "more above") {
-			t.Fatalf("expected 'more above' indicator in middle, got %q", view)
-		}
-		if !strings.Contains(view, "more below") {
-			t.Fatalf("expected 'more below' indicator in middle, got %q", view)
-		}
-	})
-
-	t.Run("bottom shows more above", func(t *testing.T) {
-		m.core.SelectedIdx = 9
-		view := stripANSI(m.View())
-		if !strings.Contains(view, "more above") {
-			t.Fatalf("expected 'more above' indicator at bottom, got %q", view)
-		}
-		if strings.Contains(view, "more below") {
-			t.Fatalf("did not expect 'more below' indicator at bottom, got %q", view)
-		}
-	})
-}
-
-func TestViewNoScrollIndicatorsForShortList(t *testing.T) {
-	m := newTestModel()
-	m.core.Mode = core.ModeBrowsing
-	m.core.Query = "proj"
-	m.input.SetValue("proj")
-	m.core.Filtered = []core.DirEntry{
-		{Path: "/proj1", Name: "proj1"},
-		{Path: "/proj2", Name: "proj2"},
-	}
-	m.core.SelectedIdx = 0
+	m.core.SelectedIdx = 9
 
 	view := stripANSI(m.View())
-	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
-		t.Fatalf("did not expect scroll indicators for short list, got %q", view)
+	if !strings.Contains(view, "proj10") {
+		t.Fatalf("expected selected item to be visible in rendered list, got %q", view)
 	}
 }
 

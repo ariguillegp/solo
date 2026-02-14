@@ -10,6 +10,7 @@ import (
 	"github.com/ariguillegp/rivet/internal/core"
 
 	"github.com/ariguillegp/rivet/internal/ports"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,6 +23,11 @@ type Model struct {
 	toolInput           textinput.Model
 	sessionInput        textinput.Model
 	themeInput          textinput.Model
+	projectList         list.Model
+	worktreeList        list.Model
+	toolList            list.Model
+	sessionList         list.Model
+	themeList           list.Model
 	spinner             spinner.Model
 	fs                  ports.Filesystem
 	sessions            ports.SessionManager
@@ -34,7 +40,6 @@ type Model struct {
 	themes              []Theme
 	filteredThemes      []Theme
 	activeThemeIdx      int
-	themeIdx            int
 	themePickerPrevIdx  int
 	showHelp            bool
 	showThemePicker     bool
@@ -61,6 +66,7 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	homeDir, _ := os.UserHomeDir()
 
 	allThemes := Themes()
+	styles := NewStyles(allThemes[0])
 	return Model{
 		core:               core.NewModel(roots),
 		input:              ti,
@@ -68,15 +74,19 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		toolInput:          tti,
 		sessionInput:       sti,
 		themeInput:         thi,
+		projectList:        newSuggestionList(styles),
+		worktreeList:       newSuggestionList(styles),
+		toolList:           newSuggestionList(styles),
+		sessionList:        newSuggestionList(styles),
+		themeList:          newSuggestionList(styles),
 		spinner:            sp,
 		fs:                 fs,
 		sessions:           sessions,
 		maxDepth:           2,
-		styles:             NewStyles(allThemes[0]),
+		styles:             styles,
 		themes:             allThemes,
 		filteredThemes:     allThemes,
 		activeThemeIdx:     0,
-		themeIdx:           0,
 		themePickerPrevIdx: 0,
 		homeDir:            homeDir,
 	}
@@ -113,10 +123,11 @@ func (m *Model) openThemePicker() {
 	m.themePickerPrevIdx = m.activeThemeIdx
 	m.themeInput.SetValue("")
 	m.filteredThemes = m.themes
-	m.themeIdx = indexOfThemeByName(m.filteredThemes, m.themes[m.activeThemeIdx].Name)
-	if m.themeIdx < 0 {
-		m.themeIdx = 0
+	idx := indexOfThemeByName(m.filteredThemes, m.themes[m.activeThemeIdx].Name)
+	if idx < 0 {
+		idx = 0
 	}
+	m.themeList.Select(idx)
 	m.blurInputs()
 	m.themeInput.Focus()
 }
@@ -128,7 +139,7 @@ func (m *Model) closeThemePicker(apply bool) {
 	m.showThemePicker = false
 	m.themeInput.SetValue("")
 	m.filteredThemes = m.themes
-	m.themeIdx = 0
+	m.themeList.Select(0)
 	m.themeInput.Blur()
 	m.restoreInputFocus()
 }
@@ -139,44 +150,48 @@ func (m *Model) applyThemeByIndex(themeIdx int) {
 	}
 	m.activeThemeIdx = themeIdx
 	m.styles = NewStyles(m.themes[themeIdx])
+	m.applyListStyles()
 }
 
 func (m *Model) applyThemeSelection() {
-	if len(m.filteredThemes) == 0 || m.themeIdx < 0 || m.themeIdx >= len(m.filteredThemes) {
+	idx := m.themeList.Index()
+	if len(m.filteredThemes) == 0 || idx < 0 || idx >= len(m.filteredThemes) {
 		return
 	}
-	selected := m.filteredThemes[m.themeIdx]
-	idx := indexOfThemeByName(m.themes, selected.Name)
-	if idx < 0 {
+	selected := m.filteredThemes[idx]
+	themeIdx := indexOfThemeByName(m.themes, selected.Name)
+	if themeIdx < 0 {
 		return
 	}
-	m.applyThemeByIndex(idx)
+	m.applyThemeByIndex(themeIdx)
 }
 
 func (m *Model) previewSelectedTheme() {
-	if len(m.filteredThemes) == 0 || m.themeIdx < 0 || m.themeIdx >= len(m.filteredThemes) {
+	idx := m.themeList.Index()
+	if len(m.filteredThemes) == 0 || idx < 0 || idx >= len(m.filteredThemes) {
 		return
 	}
-	selected := m.filteredThemes[m.themeIdx]
-	idx := indexOfThemeByName(m.themes, selected.Name)
-	if idx < 0 {
+	selected := m.filteredThemes[idx]
+	themeIdx := indexOfThemeByName(m.themes, selected.Name)
+	if themeIdx < 0 {
 		return
 	}
-	m.applyThemeByIndex(idx)
+	m.applyThemeByIndex(themeIdx)
 }
 
 func (m *Model) refreshThemeFilter() {
 	m.filteredThemes = FilterThemes(m.themes, m.themeInput.Value())
+	m.syncThemeList()
 	if len(m.filteredThemes) == 0 {
-		m.themeIdx = 0
+		m.themeList.Select(0)
 		return
 	}
 	activeName := m.themes[m.activeThemeIdx].Name
 	idx := indexOfThemeByName(m.filteredThemes, activeName)
 	if idx < 0 {
-		m.themeIdx = 0
+		m.themeList.Select(0)
 	} else {
-		m.themeIdx = idx
+		m.themeList.Select(idx)
 	}
 	m.previewSelectedTheme()
 }
@@ -218,6 +233,7 @@ func (m Model) displayPath(path string) string {
 func (m Model) Init() tea.Cmd {
 	coreModel, effects := core.Init(m.core)
 	m.core = coreModel
+	m.syncLists()
 	cmd := m.runEffects(effects)
 	return tea.Batch(m.spinner.Tick, cmd)
 }
@@ -229,6 +245,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.applyListStyles()
 		return m, nil
 
 	case spinner.TickMsg:
@@ -269,17 +286,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.applyThemeSelection()
 				m.closeThemePicker(true)
 				return m, nil
-			case "up", "ctrl+k":
-				if m.themeIdx > 0 {
-					m.themeIdx--
-					m.previewSelectedTheme()
-				}
-				return m, nil
-			case "down", "ctrl+j":
-				if m.themeIdx < len(m.filteredThemes)-1 {
-					m.themeIdx++
-					m.previewSelectedTheme()
-				}
+			case "up", "ctrl+k", "down", "ctrl+j":
+				var cmd tea.Cmd
+				m.themeList, cmd = m.themeList.Update(msg)
+				cmds = append(cmds, cmd)
+				m.previewSelectedTheme()
 				return m, nil
 			case "ctrl+c":
 				return m, tea.Quit
@@ -304,8 +315,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		prevMode := m.core.Mode
 
+		if key == "up" || key == "down" || key == "ctrl+j" || key == "ctrl+k" {
+			cmd := m.updateNavigationList(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+
 		coreModel, effects, handled := core.UpdateKey(m.core, key)
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -400,6 +419,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		m.syncLists()
 		cmds = append(cmds, m.runEffects(effects))
 		return m, tea.Batch(cmds...)
 
@@ -409,6 +429,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:  msg.err,
 		})
 		m.core = coreModel
+		m.syncLists()
 		cmd := m.runEffects(effects)
 		return m, cmd
 
@@ -418,6 +439,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:         msg.err,
 		})
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -431,6 +453,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:         msg.err,
 		})
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -447,6 +470,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:       msg.err,
 		})
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -460,6 +484,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:  msg.err,
 		})
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -477,6 +502,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:  msg.err,
 		})
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -489,18 +515,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case core.MsgToolPrewarmFailed:
 		coreModel, effects := core.Update(m.core, msg)
 		m.core = coreModel
+		m.syncLists()
 		cmd := m.runEffects(effects)
 		return m, cmd
 
 	case core.MsgToolPrewarmStarted:
 		coreModel, effects := core.Update(m.core, msg)
 		m.core = coreModel
+		m.syncLists()
 		cmd := m.runEffects(effects)
 		return m, cmd
 
 	case core.MsgToolPrewarmExisting:
 		coreModel, effects := core.Update(m.core, msg)
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -510,6 +539,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case core.MsgToolDelayElapsed:
 		coreModel, effects := core.Update(m.core, msg)
 		m.core = coreModel
+		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -522,6 +552,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:      msg.err,
 		})
 		m.core = coreModel
+		m.syncLists()
 		cmd := m.runEffects(effects)
 		return m, cmd
 
