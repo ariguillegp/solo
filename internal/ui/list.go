@@ -95,15 +95,19 @@ func newSessionTable(styles Styles) table.Model {
 
 func newSessionTableStyles(styles Styles) table.Styles {
 	ts := table.DefaultStyles()
+	headerFg := styles.Body.GetForeground()
 	cellFg := styles.Path.GetForeground()
 	selectedFg := styles.SelectedSuggestion.GetForeground()
 
+	ts.Header = ts.Header.Bold(true)
+	if headerFg != nil {
+		ts.Header = ts.Header.Foreground(headerFg)
+	}
 	if cellFg != nil {
 		ts.Cell = ts.Cell.Foreground(cellFg)
 	}
 
-	ts.Header = ts.Header.Bold(true)
-	ts.Selected = ts.Selected.UnsetBackground().Bold(true)
+	ts.Selected = ts.Cell.Copy().UnsetBackground().Bold(true)
 	if selectedFg != nil {
 		ts.Selected = ts.Selected.Foreground(selectedFg)
 	}
