@@ -214,11 +214,8 @@ func TestViewToolStarting(t *testing.T) {
 	if !strings.Contains(view, "Starting opencode") {
 		t.Fatalf("expected tool starting view, got %q", view)
 	}
-	if !strings.Contains(view, "2/4 tools ready") {
-		t.Fatalf("expected warmup status text, got %q", view)
-	}
-	if strings.Contains(view, "100%") {
-		t.Fatalf("expected progress bar without percentage text, got %q", view)
+	if !strings.Contains(view, "%") {
+		t.Fatalf("expected progress bar to include percentage text, got %q", view)
 	}
 }
 

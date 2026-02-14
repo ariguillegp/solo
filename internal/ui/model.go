@@ -65,7 +65,7 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 
-	pr := progress.New(progress.WithoutPercentage())
+	pr := progress.New()
 
 	homeDir, _ := os.UserHomeDir()
 
