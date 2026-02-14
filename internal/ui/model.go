@@ -11,6 +11,8 @@ import (
 
 	"github.com/ariguillegp/rivet/internal/ports"
 	"github.com/ariguillegp/rivet/internal/ui/listmodel"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -46,6 +48,8 @@ type Model struct {
 	showHelp            bool
 	showThemePicker     bool
 	homeDir             string
+	help                help.Model
+	keymap              keyMap
 }
 
 func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Model {
@@ -71,7 +75,9 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 
 	allThemes := Themes()
 	styles := NewStyles(allThemes[0])
-	model := Model{
+	h := newHelpModel()
+	km := newKeyMap()
+	m := Model{
 		core:               core.NewModel(roots),
 		input:              ti,
 		worktreeInput:      wti,
@@ -94,9 +100,13 @@ func New(roots []string, fs ports.Filesystem, sessions ports.SessionManager) Mod
 		activeThemeIdx:     0,
 		themePickerPrevIdx: 0,
 		homeDir:            homeDir,
+		help:               h,
+		keymap:             km,
 	}
-	model.syncProgressTheme(allThemes[0])
-	return model
+	m.syncProgressTheme(allThemes[0])
+	m.applyHelpStyles()
+	m.applyListStyles()
+	return m
 }
 
 func (m *Model) blurInputs() {
@@ -164,7 +174,15 @@ func (m *Model) applyThemeByIndex(themeIdx int) {
 	m.activeThemeIdx = themeIdx
 	m.styles = NewStyles(theme)
 	m.syncProgressTheme(theme)
+	m.applyHelpStyles()
 	m.applyListStyles()
+}
+
+func (m *Model) applyHelpStyles() {
+	m.help.Styles.ShortKey = m.styles.Key
+	m.help.Styles.ShortDesc = m.styles.Help
+	m.help.Styles.FullKey = m.styles.Key
+	m.help.Styles.FullDesc = m.styles.Help
 }
 
 func (m *Model) applyThemeSelection() {
@@ -268,11 +286,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.KeyMsg:
-		key := msg.String()
-
 		if m.showHelp {
-			switch key {
-			case "esc", "?":
+			switch {
+			case key.Matches(msg, m.keymap.Back, m.keymap.Toggle):
 				m.showHelp = false
 				switch m.core.Mode {
 				case core.ModeBrowsing:
@@ -285,27 +301,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.sessionInput.Focus()
 				}
 				return m, nil
-			case "ctrl+c":
+			case key.Matches(msg, m.keymap.Quit):
 				return m, tea.Quit
 			}
 			return m, nil
 		}
 
 		if m.showThemePicker {
-			switch key {
-			case "esc":
+			switch {
+			case key.Matches(msg, m.keymap.Back):
 				m.closeThemePicker(false)
 				return m, nil
-			case "enter":
+			case key.Matches(msg, m.keymap.Select):
 				m.applyThemeSelection()
 				m.closeThemePicker(true)
 				return m, nil
-			case "up", "ctrl+k", "down", "ctrl+j":
+			case key.Matches(msg, m.keymap.Up, m.keymap.Down):
 				var cmd tea.Cmd
 				m.themeList, cmd = m.themeList.Update(msg)
 				m.previewSelectedTheme()
 				return m, cmd
-			case "ctrl+c":
+			case key.Matches(msg, m.keymap.Quit):
 				return m, tea.Quit
 			}
 
@@ -315,20 +331,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
-		if key == "?" && m.core.Mode != core.ModeLoading {
+		if key.Matches(msg, m.keymap.Toggle) && m.core.Mode != core.ModeLoading {
 			m.showHelp = true
 			m.blurInputs()
 			return m, nil
 		}
 
-		if key == "ctrl+t" && m.core.Mode != core.ModeLoading {
+		if key.Matches(msg, m.keymap.Theme) && m.core.Mode != core.ModeLoading {
 			m.openThemePicker()
 			return m, nil
 		}
 
 		prevMode := m.core.Mode
 
-		coreModel, effects, handled := core.UpdateKey(m.core, key)
+		action, mapped := m.keymap.actionForCore(msg)
+		coreModel, effects, handled := core.UpdateKey(m.core, action)
+		if !mapped {
+			handled = false
+		}
 		m.core = coreModel
 		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
@@ -535,7 +555,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case core.MsgToolPrewarmExisting:
 		coreModel, effects := core.Update(m.core, msg)
 		m.core = coreModel
-		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -545,7 +564,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case core.MsgToolDelayElapsed:
 		coreModel, effects := core.Update(m.core, msg)
 		m.core = coreModel
-		m.syncLists()
 		if spec := extractSessionSpec(effects); spec != nil {
 			m.SelectedSpec = spec
 		}
@@ -558,7 +576,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Err:      msg.err,
 		})
 		m.core = coreModel
-		m.syncLists()
 		cmd := m.runEffects(effects)
 		return m, cmd
 

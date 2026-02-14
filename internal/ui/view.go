@@ -6,22 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/ariguillegp/rivet/internal/core"
 )
-
-func (m Model) renderHelpLine(items []struct{ key, desc string }) string {
-	var parts []string
-	for _, item := range items {
-		parts = append(parts, m.styles.Key.Render(item.key)+" "+m.styles.Help.Render(item.desc))
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Center, strings.Join(parts, "  "))
-}
-
-func (m Model) renderHelpRow(key, desc string) string {
-	return m.styles.Key.Render(key) + " " + m.styles.Help.Render(desc)
-}
 
 func (m Model) View() string {
 	m.syncLists()
@@ -40,7 +29,7 @@ func (m Model) View() string {
 	switch m.core.Mode {
 	case core.ModeLoading:
 		content = m.spinner.View() + " Scanning..."
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "quit"}})
+		helpLine = m.shortHelpView()
 
 	case core.ModeBrowsing:
 		header = m.styles.Title.Render("Step 1: Select Project")
@@ -52,9 +41,7 @@ func (m Model) View() string {
 		} else {
 			content = input + "\n" + m.styles.EmptyState.Render("No matches. Press esc to quit.")
 		}
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{
-			{"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+s", "sessions"}, {"?", "help"}, {"esc", "quit"},
-		})
+		helpLine = m.shortHelpView()
 
 	case core.ModeProjectDeleteConfirm:
 		header = m.styles.Title.Render("⚠ Delete Project")
@@ -81,7 +68,7 @@ func (m Model) View() string {
 		if m.core.WorktreeWarning != "" {
 			content += "\n" + m.styles.Warning.Render("⚠ "+m.core.WorktreeWarning)
 		}
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"enter", "select"}, {"ctrl+d", "delete"}, {"ctrl+s", "sessions"}, {"?", "help"}, {"esc", "back"}})
+		helpLine = m.shortHelpView()
 
 	case core.ModeWorktreeDeleteConfirm:
 		header = m.styles.Title.Render("⚠ Delete Workspace")
@@ -110,7 +97,7 @@ func (m Model) View() string {
 		if m.core.ToolError != "" {
 			content += "\n" + m.styles.Error.Render(m.core.ToolError)
 		}
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"enter", "open"}, {"ctrl+s", "sessions"}, {"?", "help"}, {"esc", "back"}})
+		helpLine = m.shortHelpView()
 
 	case core.ModeToolStarting:
 		toolName := "tool"
@@ -121,14 +108,14 @@ func (m Model) View() string {
 		progressValue := m.toolStartingProgress()
 		bar := m.progress.ViewAs(progressValue)
 		content = fmt.Sprintf("Starting %s...\n\n%s", toolName, bar)
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "cancel"}, {"ctrl+c", "quit"}})
+		helpLine = m.shortHelpView()
 
 	case core.ModeSessions:
 		header = m.styles.Title.Render("Active tmux sessions")
 		breadcrumb = m.renderBreadcrumb()
 		if len(m.core.Sessions) == 0 {
 			content = m.styles.EmptyState.Render("No active sessions. Press esc to return.")
-			helpLine = m.renderHelpLine([]struct{ key, desc string }{{"?", "help"}, {"esc", "back"}})
+			helpLine = m.shortHelpView()
 			break
 		}
 		prompt := m.styles.Prompt.Render("Filter sessions:")
@@ -138,11 +125,11 @@ func (m Model) View() string {
 		} else {
 			content = input + "\n" + m.styles.EmptyState.Render("No matches. Press esc to return.")
 		}
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"enter", "attach"}, {"?", "help"}, {"esc", "back"}})
+		helpLine = m.shortHelpView()
 
 	case core.ModeError:
 		content = m.styles.Error.Render(fmt.Sprintf("Error: %v", m.core.Err))
-		helpLine = m.renderHelpLine([]struct{ key, desc string }{{"esc", "quit"}})
+		helpLine = m.shortHelpView()
 	}
 
 	if header != "" {
@@ -270,36 +257,7 @@ func (m Model) renderBreadcrumbItem(label, value string) string {
 
 func (m Model) renderHelpModal() string {
 	header := m.styles.Title.Render("Help Menu")
-
-	sections := []struct {
-		title string
-		rows  []string
-	}{
-		{title: "Navigation", rows: []string{
-			m.renderHelpRow("up/down", "move selection"),
-			m.renderHelpRow("ctrl+j/ctrl+k", "move selection"),
-			m.renderHelpRow("enter", "select / open / create"),
-			m.renderHelpRow("esc", "back or quit"),
-			m.renderHelpRow("ctrl+c", "quit"),
-			m.renderHelpRow("?", "toggle help"),
-		}},
-		{title: "Filtering", rows: []string{m.renderHelpRow("type", "filter the current list")}},
-		{title: "Sessions", rows: []string{m.renderHelpRow("ctrl+s", "open sessions"), m.renderHelpRow("enter", "attach to session")}},
-		{title: "Actions", rows: []string{m.renderHelpRow("ctrl+d", "delete project/workspace"), m.renderHelpRow("ctrl+t", "open theme picker")}},
-	}
-
-	var out strings.Builder
-	for i, section := range sections {
-		if i > 0 {
-			out.WriteString("\n\n")
-		}
-		out.WriteString(m.styles.SectionTitle.Render(section.title))
-		out.WriteString("\n")
-		out.WriteString(strings.Join(section.rows, "\n"))
-	}
-
-	footer := m.styles.Help.Render("Press ? or esc to close")
-	content := header + "\n\n" + out.String() + "\n\n" + footer
+	content := header + "\n\n" + m.fullHelpView() + "\n\n" + m.styles.Help.Render("Press ? or esc to close")
 	boxStyle := m.styles.BoxWithWidth(m.width)
 	box := boxStyle.Render(content)
 	if m.height <= 0 || m.width <= 0 {
@@ -320,7 +278,7 @@ func (m Model) renderThemePicker() string {
 		content = input + "\n" + m.styles.EmptyState.Render("No matching themes.")
 	}
 
-	help := m.renderHelpLine([]struct{ key, desc string }{{"enter", "apply"}, {"esc", "cancel"}})
+	help := m.help.ShortHelpView([]key.Binding{m.keymap.binding(m.keymap.Select, "apply"), m.keymap.binding(m.keymap.Back, "cancel")})
 	content = header + "\n\n" + content + "\n\n" + help
 
 	boxStyle := m.styles.BoxWithWidth(m.width)

@@ -12,7 +12,7 @@ func TestWorktreeDeleteKeyEntersConfirm(t *testing.T) {
 		WorktreeIdx: 0,
 	}
 
-	updated, effects, handled := UpdateKey(m, "ctrl+d")
+	updated, effects, handled := UpdateKey(m, KeyDelete)
 	if !handled {
 		t.Fatal("expected ctrl+d to be handled")
 	}
@@ -36,7 +36,7 @@ func TestProjectDeleteKeyEntersConfirm(t *testing.T) {
 		SelectedIdx: 0,
 	}
 
-	updated, effects, handled := UpdateKey(m, "ctrl+d")
+	updated, effects, handled := UpdateKey(m, KeyDelete)
 	if !handled {
 		t.Fatal("expected ctrl+d to be handled")
 	}
@@ -54,7 +54,7 @@ func TestProjectDeleteKeyEntersConfirm(t *testing.T) {
 func TestWorktreeDeleteKeyWithNoSelectionNoop(t *testing.T) {
 	m := Model{Mode: ModeWorktree}
 
-	updated, effects, handled := UpdateKey(m, "ctrl+d")
+	updated, effects, handled := UpdateKey(m, KeyDelete)
 	if !handled {
 		t.Fatal("expected ctrl+d to be handled")
 	}
@@ -76,7 +76,7 @@ func TestWorktreeDeleteConfirmEnterEmitsEffect(t *testing.T) {
 		WorktreeDeletePath: "/projects/demo/feature",
 	}
 
-	updated, effects, handled := UpdateKey(m, "enter")
+	updated, effects, handled := UpdateKey(m, KeyEnter)
 	if !handled {
 		t.Fatal("expected enter to be handled")
 	}
@@ -101,7 +101,7 @@ func TestProjectDeleteConfirmEnterEmitsEffect(t *testing.T) {
 		ProjectDeletePath: "/projects/demo",
 	}
 
-	updated, effects, handled := UpdateKey(m, "enter")
+	updated, effects, handled := UpdateKey(m, KeyEnter)
 	if !handled {
 		t.Fatal("expected enter to be handled")
 	}
@@ -126,7 +126,7 @@ func TestWorktreeDeleteConfirmEscCancels(t *testing.T) {
 		WorktreeDeletePath: "/projects/demo/feature",
 	}
 
-	updated, effects, handled := UpdateKey(m, "esc")
+	updated, effects, handled := UpdateKey(m, KeyBack)
 	if !handled {
 		t.Fatal("expected esc to be handled")
 	}
@@ -147,7 +147,7 @@ func TestProjectDeleteConfirmEscCancels(t *testing.T) {
 		ProjectDeletePath: "/projects/demo",
 	}
 
-	updated, effects, handled := UpdateKey(m, "esc")
+	updated, effects, handled := UpdateKey(m, KeyBack)
 	if !handled {
 		t.Fatal("expected esc to be handled")
 	}

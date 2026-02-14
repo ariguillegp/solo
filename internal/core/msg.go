@@ -28,10 +28,22 @@ type MsgProjectDeleted struct {
 func (MsgProjectDeleted) isMsg() {}
 
 type MsgKeyPress struct {
-	Key string
+	Key KeyAction
 }
 
 func (MsgKeyPress) isMsg() {}
+
+type KeyAction string
+
+const (
+	KeyUp       KeyAction = "up"
+	KeyDown     KeyAction = "down"
+	KeyEnter    KeyAction = "enter"
+	KeyDelete   KeyAction = "delete"
+	KeySessions KeyAction = "sessions"
+	KeyBack     KeyAction = "back"
+	KeyQuit     KeyAction = "quit"
+)
 
 type MsgQueryChanged struct {
 	Query string

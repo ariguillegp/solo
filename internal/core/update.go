@@ -192,11 +192,11 @@ func Update(m Model, msg Msg) (Model, []Effect) {
 	return m, nil
 }
 
-func UpdateKey(m Model, key string) (Model, []Effect, bool) {
+func UpdateKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	return handleKey(m, key)
 }
 
-func handleKey(m Model, key string) (Model, []Effect, bool) {
+func handleKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch m.Mode {
 	case ModeBrowsing:
 		return handleBrowsingKey(m, key)
@@ -216,14 +216,14 @@ func handleKey(m Model, key string) (Model, []Effect, bool) {
 	return m, nil, false
 }
 
-func handleBrowsingKey(m Model, key string) (Model, []Effect, bool) {
+func handleBrowsingKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch key {
-	case "up", "ctrl+k":
+	case KeyUp:
 		if m.SelectedIdx > 0 {
 			m.SelectedIdx--
 		}
 		return m, nil, true
-	case "down", "ctrl+j":
+	case KeyDown:
 		maxIdx := len(m.Filtered) - 1
 		if _, ok := m.CreateProjectPath(); ok {
 			maxIdx = len(m.Filtered)
@@ -232,7 +232,7 @@ func handleBrowsingKey(m Model, key string) (Model, []Effect, bool) {
 			m.SelectedIdx++
 		}
 		return m, nil, true
-	case "enter":
+	case KeyEnter:
 		if dir, ok := m.SelectedDir(); ok {
 			m.SelectedProject = dir.Path
 			m.Mode = ModeWorktree
@@ -244,47 +244,47 @@ func handleBrowsingKey(m Model, key string) (Model, []Effect, bool) {
 			return m, []Effect{EffCreateProject{Path: path}}, true
 		}
 		return m, nil, true
-	case "ctrl+d":
+	case KeyDelete:
 		if dir, ok := m.SelectedDir(); ok {
 			m.Mode = ModeProjectDeleteConfirm
 			m.ProjectDeletePath = dir.Path
 			return m, nil, true
 		}
 		return m, nil, true
-	case "ctrl+s":
+	case KeySessions:
 		return enterSessionsMode(m)
-	case "esc", "ctrl+c":
+	case KeyBack, KeyQuit:
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
 }
 
-func handleProjectDeleteConfirmKey(m Model, key string) (Model, []Effect, bool) {
+func handleProjectDeleteConfirmKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch key {
-	case "enter":
+	case KeyEnter:
 		if m.ProjectDeletePath != "" {
 			return m, []Effect{EffDeleteProject{ProjectPath: m.ProjectDeletePath}}, true
 		}
 		m.Mode = ModeBrowsing
 		return m, nil, true
-	case "esc":
+	case KeyBack:
 		m.Mode = ModeBrowsing
 		m.ProjectDeletePath = ""
 		return m, nil, true
-	case "ctrl+c":
+	case KeyQuit:
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
 }
 
-func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
+func handleWorktreeKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch key {
-	case "up", "ctrl+k":
+	case KeyUp:
 		if m.WorktreeIdx > 0 {
 			m.WorktreeIdx--
 		}
 		return m, nil, true
-	case "down", "ctrl+j":
+	case KeyDown:
 		maxIdx := len(m.FilteredWT) - 1
 		if _, ok := m.CreateWorktreeName(); ok {
 			maxIdx = len(m.FilteredWT)
@@ -293,7 +293,7 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 			m.WorktreeIdx++
 		}
 		return m, nil, true
-	case "enter":
+	case KeyEnter:
 		if wt, ok := m.SelectedWorktree(); ok {
 			m.SelectedWorktreePath = wt.Path
 			m, effects := enterToolMode(m)
@@ -307,7 +307,7 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 			}}, true
 		}
 		return m, nil, true
-	case "ctrl+d":
+	case KeyDelete:
 		if wt, ok := m.SelectedWorktree(); ok {
 			m.Mode = ModeWorktreeDeleteConfirm
 			m.WorktreeDeletePath = wt.Path
@@ -315,7 +315,7 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 			return m, nil, true
 		}
 		return m, nil, true
-	case "esc":
+	case KeyBack:
 		m.Mode = ModeBrowsing
 		m.WorktreeQuery = ""
 		m.Worktrees = nil
@@ -326,17 +326,17 @@ func handleWorktreeKey(m Model, key string) (Model, []Effect, bool) {
 		m.WorktreeDeletePath = ""
 		m.WorktreeWarning = ""
 		return m, nil, true
-	case "ctrl+s":
+	case KeySessions:
 		return enterSessionsMode(m)
-	case "ctrl+c":
+	case KeyQuit:
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
 }
 
-func handleWorktreeDeleteConfirmKey(m Model, key string) (Model, []Effect, bool) {
+func handleWorktreeDeleteConfirmKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch key {
-	case "enter":
+	case KeyEnter:
 		if m.WorktreeDeletePath != "" {
 			return m, []Effect{EffDeleteWorktree{
 				ProjectPath:  m.SelectedProject,
@@ -345,31 +345,31 @@ func handleWorktreeDeleteConfirmKey(m Model, key string) (Model, []Effect, bool)
 		}
 		m.Mode = ModeWorktree
 		return m, nil, true
-	case "esc":
+	case KeyBack:
 		m.Mode = ModeWorktree
 		m.WorktreeDeletePath = ""
 		return m, nil, true
-	case "ctrl+c":
+	case KeyQuit:
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
 }
 
-func handleToolKey(m Model, key string) (Model, []Effect, bool) {
+func handleToolKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch key {
-	case "up", "ctrl+k":
+	case KeyUp:
 		if m.ToolIdx > 0 {
 			m.ToolIdx--
 		}
 		m.ToolError = ""
 		return m, nil, true
-	case "down", "ctrl+j":
+	case KeyDown:
 		if m.ToolIdx < len(m.FilteredTools)-1 {
 			m.ToolIdx++
 		}
 		m.ToolError = ""
 		return m, nil, true
-	case "enter":
+	case KeyEnter:
 		if tool, ok := m.SelectedTool(); ok && m.SelectedWorktreePath != "" {
 			if errText, ok := m.ToolErrors[tool]; ok && errText != "" {
 				m.ToolError = errText
@@ -392,53 +392,53 @@ func handleToolKey(m Model, key string) (Model, []Effect, bool) {
 			return m, []Effect{EffCheckToolReady{Spec: spec}}, true
 		}
 		return m, nil, true
-	case "esc":
+	case KeyBack:
 		m.Mode = ModeWorktree
 		m.ToolQuery = ""
 		m.ToolIdx = 0
 		m.ToolError = ""
 		return m, nil, true
-	case "ctrl+s":
+	case KeySessions:
 		return enterSessionsMode(m)
-	case "ctrl+c":
+	case KeyQuit:
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
 }
 
-func handleToolStartingKey(m Model, key string) (Model, []Effect, bool) {
+func handleToolStartingKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch key {
-	case "esc":
+	case KeyBack:
 		m.Mode = ModeTool
 		m.PendingSpec = nil
 		m.ToolError = ""
 		return m, nil, true
-	case "ctrl+c":
+	case KeyQuit:
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
 }
 
-func handleSessionsKey(m Model, key string) (Model, []Effect, bool) {
+func handleSessionsKey(m Model, key KeyAction) (Model, []Effect, bool) {
 	switch key {
-	case "up", "ctrl+k":
+	case KeyUp:
 		if m.SessionIdx > 0 {
 			m.SessionIdx--
 		}
 		return m, nil, true
-	case "down", "ctrl+j":
+	case KeyDown:
 		if m.SessionIdx < len(m.FilteredSessions)-1 {
 			m.SessionIdx++
 		}
 		return m, nil, true
-	case "enter":
+	case KeyEnter:
 		if session, ok := m.SelectedSession(); ok {
 			return m, []Effect{EffAttachSession{Session: session}}, true
 		}
 		return m, nil, true
-	case "esc":
+	case KeyBack:
 		return leaveSessionsMode(m)
-	case "ctrl+c":
+	case KeyQuit:
 		return m, []Effect{EffQuit{}}, true
 	}
 	return m, nil, false
