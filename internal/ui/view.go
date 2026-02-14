@@ -177,6 +177,16 @@ func clamp01(value float64) float64 {
 	return value
 }
 
+const maxDisplayedToolStartingProgress = 0.99
+
+func (m Model) displayableToolStartingProgress(value float64) float64 {
+	progress := clamp01(value)
+	if m.core.Mode == core.ModeToolStarting && progress >= 1 {
+		return maxDisplayedToolStartingProgress
+	}
+	return progress
+}
+
 func (m Model) toolStartingProgress() float64 {
 	total := m.core.ToolWarmupTotal
 	if total <= 0 {
@@ -187,15 +197,15 @@ func (m Model) toolStartingProgress() float64 {
 	checksProgress := float64(completed) / float64(total)
 
 	if m.core.PendingSpec == nil || m.core.ToolWarmStart == nil {
-		return clamp01(checksProgress)
+		return m.displayableToolStartingProgress(checksProgress)
 	}
 
 	start, ok := m.core.ToolWarmStart[m.core.PendingSpec.Tool]
 	if !ok {
-		return clamp01(checksProgress)
+		return m.displayableToolStartingProgress(checksProgress)
 	}
 	if start.IsZero() {
-		return 1
+		return m.displayableToolStartingProgress(1)
 	}
 
 	elapsedFraction := float64(time.Since(start)) / float64(toolReadyDelay)
@@ -205,7 +215,7 @@ func (m Model) toolStartingProgress() float64 {
 	if adjustedCompleted < 0 {
 		adjustedCompleted = 0
 	}
-	return clamp01((float64(adjustedCompleted) + elapsedFraction) / float64(total))
+	return m.displayableToolStartingProgress((float64(adjustedCompleted) + elapsedFraction) / float64(total))
 }
 
 func (m Model) renderBreadcrumb() string {

@@ -419,7 +419,7 @@ func TestToolStartingProgressUsesWarmupDelayFraction(t *testing.T) {
 	}
 }
 
-func TestToolStartingProgressCapsAtOneForExistingSession(t *testing.T) {
+func TestToolStartingProgressStaysBelowOneForExistingSession(t *testing.T) {
 	m := newTestModel()
 	m.core.Mode = core.ModeToolStarting
 	m.core.ToolWarmupTotal = 4
@@ -430,7 +430,23 @@ func TestToolStartingProgressCapsAtOneForExistingSession(t *testing.T) {
 	}
 
 	progress := m.toolStartingProgress()
-	if progress != 1 {
-		t.Fatalf("expected progress to be complete, got %f", progress)
+	if progress != maxDisplayedToolStartingProgress {
+		t.Fatalf("expected progress to stay below complete while startup is in-flight, got %f", progress)
+	}
+}
+
+func TestToolStartingProgressStaysBelowOneWhileWaitingForOpen(t *testing.T) {
+	m := newTestModel()
+	m.core.Mode = core.ModeToolStarting
+	m.core.ToolWarmupTotal = 4
+	m.core.ToolWarmupCompleted = 4
+	m.core.PendingSpec = nil
+	m.core.ToolWarmStart = map[string]time.Time{
+		"amp": time.Now().Add(-toolReadyDelay),
+	}
+
+	progress := m.toolStartingProgress()
+	if progress != maxDisplayedToolStartingProgress {
+		t.Fatalf("expected progress to stay below complete while opening session, got %f", progress)
 	}
 }
