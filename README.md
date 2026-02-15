@@ -29,6 +29,11 @@ Deleting a project also kills any sessions using it.
 
 https://github.com/user-attachments/assets/cefca0ef-3b09-402b-904a-78ca328d43a6
 
+## Help Menu
+Common actions are visible in the help bar at the bottom for better discoverability, but a more comprehensive help menu is one key press "?" away on every view.
+
+https://github.com/user-attachments/assets/e700db3d-d511-4ef9-886f-ad007691709d
+
 ## Prerequisites
 
 - tmux
