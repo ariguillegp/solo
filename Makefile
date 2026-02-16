@@ -1,9 +1,19 @@
-.PHONY: validate deploy install
+.PHONY: validate format lint test vulncheck deploy install
 
-validate:
+validate: format lint test vulncheck
+
+format:
 	gofmt -w ./cmd ./internal
-	golangci-lint run --config=.golangci.yml ./...
-	go test ./...
+
+lint: format
+	golangci-lint run --fix --config=.golangci.yml ./...
+
+test: lint
+	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+
+vulncheck: lint
+	govulncheck ./...
 
 deploy:
 	mkdir -p ~/.local/bin

@@ -391,7 +391,7 @@ func TestAttachSessionCmdWithoutManagerReturnsError(t *testing.T) {
 func TestCheckToolReadyCmdImmediateWhenWarmStartIsZero(t *testing.T) {
 	m := New(nil, &fakeFilesystem{}, nil)
 	m.core.ToolWarmStart = map[string]time.Time{
-		"amp": time.Time{},
+		"amp": {},
 	}
 
 	msg := m.checkToolReadyCmd(core.SessionSpec{Tool: "amp"})()
