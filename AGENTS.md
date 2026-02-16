@@ -15,7 +15,7 @@ Use progressive guidance: start here for orientation, then check `internal/*/AGE
 
 ## Build & Verify
 - `make -j validate` (gofmt, golangci-lint, tests, govulncheck)
-  - Always use `-j` so lint, test, and vulncheck run concurrently after format completes (they declare `format` as a prerequisite to avoid races with `gofmt -w`).
+  - Always use `-j` so test and vulncheck run concurrently after format and lint complete (format → lint → test + vulncheck, avoiding races with `gofmt -w` and `golangci-lint --fix`).
 - `make deploy` (install binary)
 
 ## Design Guidance

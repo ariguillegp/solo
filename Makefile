@@ -8,11 +8,11 @@ format:
 lint: format
 	golangci-lint run --fix --config=.golangci.yml ./...
 
-test: format
+test: lint
 	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 
-vulncheck: format
+vulncheck: lint
 	govulncheck ./...
 
 deploy:
