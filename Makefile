@@ -43,9 +43,14 @@ validate-full: modcheck lint test test-race covercheck vulncheck build ## Full C
 # Formatting
 # ---------------------------------------------------------------------------
 
-fmt: ## Auto-format code
+fmt: ## Auto-format code (check-only in CI)
+ifdef CI
+	$(call PRINT,Format check (gofmt -l))
+	@test -z "$$(gofmt -l ./cmd ./internal)" || { gofmt -l ./cmd ./internal; echo "FAIL: files need formatting"; exit 1; }
+else
 	$(call PRINT,Format (gofmt -w))
 	@gofmt -w ./cmd ./internal
+endif
 
 # ---------------------------------------------------------------------------
 # Static analysis
@@ -112,5 +117,8 @@ install: ## Full setup + deploy
 	mkdir -p ~/.rivet/worktrees
 	$(MAKE) deploy
 
-canary: ## Trigger CI workflow on current branch
+canary: ## Trigger CI workflow on current branch and open in browser
 	gh workflow run ci.yml --ref $$(git branch --show-current)
+	@sleep 3
+	@printf "\nPipeline is running, check it in your browser:\n"
+	@gh run list --workflow=ci.yml --branch=$$(git branch --show-current) --limit=1 --json url --jq '.[0].url'
