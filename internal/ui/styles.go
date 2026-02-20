@@ -106,9 +106,6 @@ func NewStyles(theme Theme) Styles {
 }
 
 func (s Styles) BoxWithWidth(terminalWidth int) lipgloss.Style {
-	width := max(terminalWidth*boxWidthPercent/100, minBoxWidth)
-	if width > maxBoxWidth {
-		width = maxBoxWidth
-	}
+	width := min(max(terminalWidth*boxWidthPercent/100, minBoxWidth), maxBoxWidth)
 	return s.BaseBox.Width(width)
 }
