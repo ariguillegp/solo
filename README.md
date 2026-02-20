@@ -47,9 +47,8 @@ https://github.com/user-attachments/assets/e700db3d-d511-4ef9-886f-ad007691709d
 ## Installation
 
 ```bash
-$ git clone git@github.com:ariguillegp/rivet.git
-$ cd rivet
-$ make install
+$ mkdir -p ~/Projects ~/.rivet/worktrees
+$ go install github.com/ariguillegp/rivet/cmd/rv@latest
 ```
 
 ## Usage
