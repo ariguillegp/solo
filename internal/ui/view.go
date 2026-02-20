@@ -380,15 +380,8 @@ func (m Model) renderViewportContent(content string) string {
 	}
 
 	vp.Width = maxWidth
-	contentHeight := lipgloss.Height(content)
-	if contentHeight < 1 {
-		contentHeight = 1
-	}
-	if contentHeight < maxHeight {
-		vp.Height = contentHeight
-	} else {
-		vp.Height = maxHeight
-	}
+	contentHeight := max(lipgloss.Height(content), 1)
+	vp.Height = min(contentHeight, maxHeight)
 
 	vp.SetContent(content)
 	if signature := m.viewportContentSignature(content); signature != m.viewportContentSig {

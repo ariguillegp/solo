@@ -168,10 +168,10 @@ func (f *OSFilesystem) ListWorktreePaths(projectPath string) ([]string, error) {
 	}
 
 	var paths []string
-	for _, line := range bytes.Split(output, []byte("\n")) {
+	for line := range bytes.SplitSeq(output, []byte("\n")) {
 		lineStr := string(line)
-		if strings.HasPrefix(lineStr, "worktree ") {
-			paths = append(paths, strings.TrimPrefix(lineStr, "worktree "))
+		if after, ok := strings.CutPrefix(lineStr, "worktree "); ok {
+			paths = append(paths, after)
 		}
 	}
 	return paths, nil
@@ -201,7 +201,7 @@ func (f *OSFilesystem) ListWorktrees(projectPath string) (core.WorktreeListing, 
 	var worktrees []core.Worktree
 	var current core.Worktree
 
-	for _, line := range bytes.Split(output, []byte("\n")) {
+	for line := range bytes.SplitSeq(output, []byte("\n")) {
 		lineStr := string(line)
 		switch {
 		case strings.HasPrefix(lineStr, "worktree "):
@@ -356,10 +356,10 @@ func isRegisteredWorktree(projectPath, worktreePath string) bool {
 		return false
 	}
 	cleanTarget := filepath.Clean(worktreePath)
-	for _, line := range bytes.Split(output, []byte("\n")) {
+	for line := range bytes.SplitSeq(output, []byte("\n")) {
 		lineStr := string(line)
-		if strings.HasPrefix(lineStr, "worktree ") {
-			wtPath := filepath.Clean(strings.TrimPrefix(lineStr, "worktree "))
+		if after, ok := strings.CutPrefix(lineStr, "worktree "); ok {
+			wtPath := filepath.Clean(after)
 			if wtPath == cleanTarget {
 				return true
 			}

@@ -96,10 +96,7 @@ func (m Model) visibleWindow() (start, end int) {
 	if maxItems <= 0 || maxItems > total {
 		maxItems = total
 	}
-	selectedIdx := m.cursor
-	if selectedIdx < 0 {
-		selectedIdx = 0
-	}
+	selectedIdx := max(m.cursor, 0)
 	if selectedIdx >= total {
 		selectedIdx = total - 1
 	}
@@ -111,10 +108,7 @@ func (m Model) visibleWindow() (start, end int) {
 	if end > total {
 		end = total
 		if end-start < maxItems && start > 0 {
-			start = end - maxItems
-			if start < 0 {
-				start = 0
-			}
+			start = max(end-maxItems, 0)
 		}
 	}
 	return start, end

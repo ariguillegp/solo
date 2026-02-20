@@ -224,10 +224,7 @@ func (m *Model) openThemePicker() {
 	m.themePickerPrevIdx = m.activeThemeIdx
 	m.themeInput.SetValue("")
 	m.filteredThemes = m.themes
-	idx := indexOfThemeByName(m.filteredThemes, m.themes[m.activeThemeIdx].Name)
-	if idx < 0 {
-		idx = 0
-	}
+	idx := max(indexOfThemeByName(m.filteredThemes, m.themes[m.activeThemeIdx].Name), 0)
 	m.themeList.Select(idx)
 	m.blurInputs()
 	m.themeInput.Focus()
@@ -339,8 +336,8 @@ func (m Model) displayPath(path string) string {
 	}
 
 	prefix := home + string(filepath.Separator)
-	if strings.HasPrefix(cleaned, prefix) {
-		return "~/" + strings.TrimPrefix(cleaned, prefix)
+	if after, ok := strings.CutPrefix(cleaned, prefix); ok {
+		return "~/" + after
 	}
 
 	return path

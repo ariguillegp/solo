@@ -218,10 +218,7 @@ func visibleListWindow(total, selectedIdx, maxItems int) (start, end int) {
 	if end > total {
 		end = total
 		if end-start < maxItems && start > 0 {
-			start = end - maxItems
-			if start < 0 {
-				start = 0
-			}
+			start = max(end-maxItems, 0)
 		}
 	}
 	return start, end
@@ -349,10 +346,7 @@ func (m *Model) syncThemeList() {
 	}
 	m.themeList.SetItems(toItems(rows))
 	m.themeList.SetHeight(listHeight(m.listLimit(), len(rows)))
-	idx := indexOfThemeByName(m.filteredThemes, m.themes[m.activeThemeIdx].Name)
-	if idx < 0 {
-		idx = 0
-	}
+	idx := max(indexOfThemeByName(m.filteredThemes, m.themes[m.activeThemeIdx].Name), 0)
 	m.themeList.Select(idx)
 }
 
