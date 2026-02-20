@@ -25,7 +25,11 @@ func (t *TmuxSession) OpenSession(spec core.SessionSpec) error {
 		return err
 	}
 
-	if _, err := ensureSession(sessionName, spec.DirPath, spec.Tool); err != nil {
+	if err := ensureWorkspaceSession(sessionName, spec.DirPath, spec.Tool); err != nil {
+		return err
+	}
+
+	if err := selectWindow(sessionName, spec.Tool); err != nil {
 		return err
 	}
 
@@ -49,7 +53,7 @@ func (t *TmuxSession) PrewarmSession(spec core.SessionSpec) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return ensureSession(sessionName, spec.DirPath, spec.Tool)
+	return ensureToolWindow(sessionName, spec.DirPath, spec.Tool)
 }
 
 func (t *TmuxSession) KillSession(spec core.SessionSpec) error {
@@ -218,32 +222,120 @@ func sessionNameFor(spec core.SessionSpec) (string, error) {
 	if strings.TrimSpace(spec.DirPath) == "" {
 		return "", fmt.Errorf("session directory is required")
 	}
-	if strings.TrimSpace(spec.Tool) == "" {
-		return "", fmt.Errorf("session tool is required")
-	}
 
 	cleanPath := filepath.Clean(spec.DirPath)
-	return sanitizeSessionPart(cleanPath, "worktree") + "__" + sanitizeSessionPart(spec.Tool, "tool"), nil
+	return sanitizeSessionPart(cleanPath, "worktree"), nil
 }
 
-func ensureSession(sessionName, dirPath, tool string) (bool, error) {
+func ensureWorkspaceSession(sessionName, dirPath, selectedTool string) error {
+	if _, err := ensureToolWindow(sessionName, dirPath, selectedTool); err != nil {
+		return err
+	}
+
+	for _, tool := range core.SupportedTools() {
+		if tool == selectedTool {
+			continue
+		}
+		if _, err := ensureToolWindow(sessionName, dirPath, tool); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func ensureToolWindow(sessionName, dirPath, tool string) (bool, error) {
+	tool = strings.TrimSpace(tool)
+	if tool == "" {
+		return false, fmt.Errorf("session tool is required")
+	}
+
 	check := exec.Command("tmux", "has-session", "-t", tmuxSessionTarget(sessionName))
-	if check.Run() == nil {
+	sessionExists := check.Run() == nil
+
+	if !sessionExists {
+		if err := createSessionWithToolWindow(sessionName, dirPath, tool); err != nil {
+			if !isTmuxDuplicateSessionError(err) {
+				return false, err
+			}
+		} else {
+			return true, nil
+		}
+	}
+
+	if hasToolWindow(sessionName, tool) {
 		return false, nil
 	}
 
+	if err := createWindow(sessionName, dirPath, tool); err != nil {
+		if isTmuxDuplicateWindowError(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
+func isTmuxDuplicateSessionError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "duplicate session")
+}
+
+func isTmuxDuplicateWindowError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "duplicate window")
+}
+
+func createSessionWithToolWindow(sessionName, dirPath, tool string) error {
 	shell, commandArgs := toolCommand(tool)
 	args := []string{"new-session", "-d", "-s", sessionName}
+	args = append(args, tmuxEnvArgs(tool)...)
+	args = append(args, "-n", tool, "-c", dirPath, shell)
+	args = append(args, commandArgs...)
+	cmd := exec.Command("tmux", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to create tmux session: %w (output: %s)", err, string(output))
+	}
+	return nil
+}
+
+func hasToolWindow(sessionName, tool string) bool {
+	target := tmuxSessionTarget(sessionName) + ":" + tool
+	check := exec.Command("tmux", "list-windows", "-t", tmuxSessionTarget(sessionName), "-F", "#{window_name}")
+	output, err := check.Output()
+	if err != nil {
+		return false
+	}
+	for line := range strings.SplitSeq(string(output), "\n") {
+		if strings.TrimSpace(line) == tool {
+			return true
+		}
+	}
+	check = exec.Command("tmux", "has-session", "-t", target)
+	return check.Run() == nil
+}
+
+func createWindow(sessionName, dirPath, tool string) error {
+	shell, commandArgs := toolCommand(tool)
+	args := []string{"new-window", "-d", "-t", tmuxSessionTarget(sessionName), "-n", tool}
 	args = append(args, tmuxEnvArgs(tool)...)
 	args = append(args, "-c", dirPath, shell)
 	args = append(args, commandArgs...)
 	cmd := exec.Command("tmux", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, fmt.Errorf("failed to create tmux session: %w (output: %s)", err, string(output))
+		return fmt.Errorf("failed to create tmux window: %w (output: %s)", err, string(output))
 	}
+	return nil
+}
 
-	return true, nil
+func selectWindow(sessionName, tool string) error {
+	cmd := exec.Command("tmux", "select-window", "-t", tmuxSessionTarget(sessionName)+":"+tool)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to select tmux window: %w (output: %s)", err, string(output))
+	}
+	return nil
 }
 
 func switchClient(sessionName string) error {
@@ -320,19 +412,5 @@ func tmuxEnvArgs(tool string) []string {
 }
 
 func parseSessionName(name string) (core.SessionInfo, bool) {
-	const separator = "__"
-	parts := strings.Split(name, separator)
-	if len(parts) < 2 {
-		return core.SessionInfo{}, false
-	}
-	tool := strings.TrimSpace(parts[len(parts)-1])
-	if !core.IsSupportedTool(tool) {
-		return core.SessionInfo{}, false
-	}
-	pathPart := strings.Join(parts[:len(parts)-1], separator)
-	pathPart = strings.TrimSpace(pathPart)
-	if pathPart == "" {
-		return core.SessionInfo{}, false
-	}
-	return core.SessionInfo{Name: name, DirPath: pathPart, Tool: tool}, true
+	return core.SessionInfo{}, false
 }
