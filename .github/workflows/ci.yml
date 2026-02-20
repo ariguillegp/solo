@@ -3,6 +3,11 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  workflow_call:
+    inputs:
+      make-target:
+        type: string
+        default: validate
   workflow_dispatch:
 
 concurrency:
@@ -22,8 +27,12 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - name: Install tools
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          if [ "${{ inputs.make-target || 'validate' }}" = "validate-full" ]; then
+            go install golang.org/x/vuln/cmd/govulncheck@latest
+          fi
 
       - name: Validate
-        run: make -j validate
+        run: make -j ${{ inputs.make-target || 'validate' }}

@@ -10,21 +10,9 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: Install tools
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-
-      - name: Validate
-        run: make -j validate-full
+    uses: ./.github/workflows/ci.yml
+    with:
+      make-target: validate-full
 
   release:
     needs: validate
