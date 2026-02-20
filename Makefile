@@ -35,7 +35,7 @@ vulncheck: compile
 help: ## Show available targets
 	@awk 'BEGIN {FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-validate: lint test-short build ## Fast local gate (make -j validate)
+validate: fix lint test-short build ## Fast local gate (make -j validate)
 
 validate-full: modcheck lint test test-race covercheck vulncheck build ## Full CI gate (make -j validate-full)
 
@@ -64,6 +64,9 @@ lint: ## golangci-lint (govet + staticcheck + errcheck + unused + gofmt + …)
 	$(call PRINT,Lint)
 	@$(GOLANGCI_LINT) run --config=.golangci.yml ./...
 
+fix: ## go fix (code modernizer)
+	$(call PRINT,Code modernizer)
+	@$(GO) fix ./...
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
